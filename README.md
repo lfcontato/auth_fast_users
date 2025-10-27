@@ -39,7 +39,7 @@ Front-end SPA em TypeScript (Vite) com UI em HTML + Bootstrap e função Serverl
   - Recuperação de senha
   - Listar e Criar UsersSpaces (JWT necessário; criação requer `tools_role=admin`)
 - Os requests são feitos para `/api/...` e o proxy repassa para `${END_POINT_API}/...`.
-  - Para signup, a SPA envia `POST /api/user` com `{ email, username, password?, confirm_password? }`. Se senha for omitida, o backend pode gerar automaticamente conforme política.
+- Para signup, a SPA envia `POST /api/user` com `{ email, username, password?, confirm_password?, redirect_uri }`. O campo `redirect_uri` é preenchido automaticamente com a URL do site (ex.: `https://seusite.vercel.app`). Se senha for omitida, o backend pode gerar automaticamente conforme política.
 
 ## Observações
 - O armazenamento de tokens é em `localStorage` (chave `users_spa_tokens_v1`).

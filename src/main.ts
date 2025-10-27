@@ -6,6 +6,17 @@ function loadTokens(): Tokens { try { return JSON.parse(localStorage.getItem(TOK
 function saveTokens(t: Tokens) { localStorage.setItem(TOKENS_KEY, JSON.stringify(t || {})); }
 function clearTokens() { localStorage.removeItem(TOKENS_KEY); }
 
+function decodeJwtPayload(token?: string): any | null {
+  if (!token) return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(base64);
+    return JSON.parse(json);
+  } catch { return null; }
+}
+
 const apiBase = '/api'; // SPA chama o proxy serverless; o proxy usa END_POINT_API
 
 async function request(path: string, opts: RequestInit & { auth?: boolean; body?: any } = {}) {
@@ -31,7 +42,10 @@ const api = {
   recovery: (p: { email: string; }) => request('/user/auth/password-recovery', { method: 'POST', body: p }),
   listSpaces: () => request('/user/spaces', { auth: true }),
   createSpace: (p: { name: string }) => request('/user/spaces', { method: 'POST', auth: true, body: p }),
-  createUser: (p: { email: string; username: string; password?: string; confirm_password?: string; }) => request('/user', { method: 'POST', body: p }),
+  createUser: (p: { email: string; username: string; password?: string; confirm_password?: string; redirect_uri?: string; }) => {
+    const redirect_uri = p.redirect_uri || window.location.origin;
+    return request('/user', { method: 'POST', body: { ...p, redirect_uri } });
+  },
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, html?: string) {
@@ -96,6 +110,17 @@ function buildUI() {
   // Login Pane
   const loginPane = el('div', 'tab-pane fade show active');
   loginPane.id = 'pane-login';
+  const loginStatus = el('div', 'mb-2');
+  function updateLoginStatus() {
+    const t = loadTokens();
+    if (t && t.access_token) {
+      const claims = decodeJwtPayload(t.access_token) || ({} as any);
+      const who = (claims.username || claims.preferred_username || claims.sub || claims.email || 'desconhecido');
+      loginStatus.replaceChildren(alert('success', `Logado como ${who}`));
+    } else {
+      loginStatus.replaceChildren(alert('danger', 'Não logado'));
+    }
+  }
   const loginForm = el('form', 'row g-2');
   loginForm.innerHTML = `
     <div class="col-md-4"><label class="form-label">Username</label><input name="username" class="form-control" required></div>
@@ -106,16 +131,16 @@ function buildUI() {
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(loginForm as HTMLFormElement);
-    try { const resp = await api.login({ username: String(fd.get('username')), password: String(fd.get('password')) }); saveTokens(resp); loginOut.replaceChildren(alert('success', 'Login ok'), jsonPre(resp)); }
+    try { const resp = await api.login({ username: String(fd.get('username')), password: String(fd.get('password')) }); saveTokens(resp); updateLoginStatus(); loginOut.replaceChildren(alert('success', 'Login ok'), jsonPre(resp)); }
     catch (err) { loginOut.replaceChildren(alert('danger', 'Falha no login'), jsonPre(err)); }
   });
   loginForm.querySelector('#btn-refresh')!.addEventListener('click', async () => {
     const t = loadTokens(); if (!t.refresh_token) { loginOut.replaceChildren(alert('danger', 'Sem refresh_token')); return; }
-    try { const resp = await api.refresh(t.refresh_token); saveTokens(resp); loginOut.replaceChildren(alert('success', 'Refresh ok'), jsonPre(resp)); }
+    try { const resp = await api.refresh(t.refresh_token); saveTokens(resp); updateLoginStatus(); loginOut.replaceChildren(alert('success', 'Refresh ok'), jsonPre(resp)); }
     catch (err) { loginOut.replaceChildren(alert('danger', 'Falha no refresh'), jsonPre(err)); }
   });
-  loginForm.querySelector('#btn-logout')!.addEventListener('click', () => { clearTokens(); loginOut.replaceChildren(alert('success', 'Sessão encerrada')); });
-  loginPane.append(section('Login', el('div', '', '')), loginForm, loginOut);
+  loginForm.querySelector('#btn-logout')!.addEventListener('click', () => { clearTokens(); updateLoginStatus(); loginOut.replaceChildren(alert('success', 'Sessão encerrada')); });
+  loginPane.append(section('Login', el('div', '', '')), loginStatus, loginForm, loginOut);
 
   // Signup Pane
   const signupPane = el('div', 'tab-pane fade');
@@ -138,7 +163,8 @@ function buildUI() {
     const confirm_password = String(fd.get('confirm_password') || '');
     if (!password || !confirm_password) { signupOut.replaceChildren(alert('danger', 'Senha e confirmação são obrigatórias')); return; }
     if (password !== confirm_password) { signupOut.replaceChildren(alert('danger', 'As senhas não coincidem')); return; }
-    const payload: any = { email, username, password, confirm_password };
+    const redirect_uri = window.location.origin;
+    const payload: any = { email, username, password, confirm_password, redirect_uri };
     signupOut.replaceChildren(alert('success', 'Enviando...'), jsonPre({ url: '/api/user', origin: window.location.origin, payload }));
     try { const resp = await api.createUser(payload); signupOut.replaceChildren(alert('success', 'Usuário criado'), jsonPre(resp)); }
     catch (err) { signupOut.replaceChildren(alert('danger', 'Falha ao criar usuário'), jsonPre(err)); }
@@ -244,6 +270,7 @@ function buildUI() {
 
   panes.append(loginPane, signupPane, verifyPane, recPane, spPane);
   app.append(panes);
+  updateLoginStatus();
 }
 
 buildUI();
