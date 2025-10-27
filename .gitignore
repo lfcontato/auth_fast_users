@@ -1,1 +1,23 @@
+# Vercel local state
 .vercel
+
+# Node/Vite
+node_modules/
+dist/
+.vite/
+
+# Env files (keep examples)
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS/Editors
+.DS_Store
+.vscode/
+.idea/
