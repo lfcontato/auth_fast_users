@@ -196,64 +196,7 @@ function buildUI() {
     try { const resp = await api.verify({ code: String(fd.get('code')), password: String(fd.get('password')) }); verifyOut.replaceChildren(alert('success', 'Conta verificada'), jsonPre(resp)); }
     catch (err) { verifyOut.replaceChildren(alert('danger', 'Falha na verificação'), jsonPre(err)); }
   });
-  // Verify via Link (auto-preenchimento a partir da URL)
-  const linkArea = el('div', 'row g-2');
-  const linkInfo = el('div');
-  const linkAction = el('div');
-  const linkReqOut = el('div');
-  const linkRespOut = el('div');
-  function setupVerifyLinkFromLocation() {
-    try {
-      const url = new URL(window.location.href);
-      const path = (url.pathname || '').replace(/\/$/, '');
-      // Aceita variações que contenham o caminho
-      const isVerifyPath = path === '/user/auth/verify-link' || path.endsWith('/user/auth/verify-link');
-      const usp = url.searchParams;
-      let code = usp.get('code') || '';
-      let login = usp.get('login') || '';
-      // Fallback: alguns clientes podem colocar params no hash
-      if ((!code || !login) && url.hash) {
-        const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
-        code = code || hashParams.get('code') || '';
-        login = login || hashParams.get('login') || '';
-      }
-      if (isVerifyPath && code && login) {
-        linkInfo.replaceChildren(jsonPre({ code, login }));
-        const btn = el('button', 'btn btn-secondary', 'Confirmar') as HTMLButtonElement;
-        btn.addEventListener('click', async () => {
-          linkReqOut.replaceChildren(jsonPre({ url: '/api/user/auth/verify-link', body: { code: '***', login } }));
-          linkRespOut.replaceChildren(alert('success', 'Confirmando...'));
-          try { const resp = await api.confirmVerifyLink({ code, login }); linkRespOut.replaceChildren(alert('success', 'Conta verificada'), jsonPre(resp)); }
-          catch (err) { linkRespOut.replaceChildren(alert('danger', 'Falha ao verificar'), jsonPre(err)); }
-        });
-        linkAction.replaceChildren(btn);
-        // Ativa aba Verificar automaticamente
-        panes.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active', 'show'));
-        tabs.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        (document.getElementById('pane-verify')!).classList.add('active', 'show');
-        (document.getElementById('tab-verify') as HTMLElement | null)?.classList.add('active');
-      } else if (isVerifyPath) {
-        linkInfo.replaceChildren(alert('danger', 'Link de verificação inválido: faltam parâmetros code/login.'));
-        linkAction.replaceChildren();
-        linkReqOut.replaceChildren();
-        linkRespOut.replaceChildren();
-        panes.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active', 'show'));
-        tabs.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-        (document.getElementById('pane-verify')!).classList.add('active', 'show');
-        (document.getElementById('tab-verify') as HTMLElement | null)?.classList.add('active');
-      } else {
-        linkInfo.replaceChildren(el('div', 'text-body-secondary', 'Abra o link recebido por e-mail para preencher automaticamente.'));
-        linkAction.replaceChildren();
-        linkReqOut.replaceChildren();
-        linkRespOut.replaceChildren();
-      }
-    } catch {
-      linkInfo.replaceChildren(el('div', 'text-danger', 'Não foi possível processar a URL atual.'));
-    }
-  }
-  linkArea.append(section('Dados do Link', linkInfo), section('Ação', linkAction), section('Request', linkReqOut), section('Response', linkRespOut));
-  setupVerifyLinkFromLocation();
-  window.addEventListener('popstate', setupVerifyLinkFromLocation);
+  // Verificação via link agora é feita em página separada em public/user/auth/verify-link
 
   const resendForm = el('form', 'row g-2');
   resendForm.innerHTML = `
@@ -266,7 +209,7 @@ function buildUI() {
     try { const resp = await api.resendCode({ login: String(fd.get('login')) }); verifyOut.replaceChildren(alert('success', 'Código reenviado'), jsonPre(resp)); }
     catch (err) { verifyOut.replaceChildren(alert('danger', 'Falha ao reenviar'), jsonPre(err)); }
   });
-  verifyPane.append(section('Verificar (código + senha)', verifyForm), section('Verificar via Link', linkArea), section('Reenviar Código', resendForm), verifyOut);
+  verifyPane.append(section('Verificar (código + senha)', verifyForm), section('Reenviar Código', resendForm), verifyOut);
 
   // Recovery Pane
   const recPane = el('div', 'tab-pane fade');
