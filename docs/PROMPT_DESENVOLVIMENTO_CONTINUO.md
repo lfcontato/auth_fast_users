@@ -38,6 +38,7 @@
 /internal
   /platform/{db,cache,mailer,...}    # implementações técnicas
 /docs
+  PROMPT_DESENVOLVIMENTO_CONTINUO.md
   HOWTOUSE_{funcionalidade}.md       # um por funcionalidade
 README.md
 ```

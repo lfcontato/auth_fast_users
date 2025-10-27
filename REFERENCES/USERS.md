@@ -9,7 +9,7 @@ Navegação: [Admins](ADMINS.md) · [Tools](TOOLS.md) · [Como usar (Users)](HOW
 
 - Tabela `users`:
   - `id`, `email` (único), `username` (único), `password_hash`.
-  - `tools_role`: `guest|user|admin|root` (default: `guest`).
+  - `tools_role`: `guest|user|admin|root` (default: `user`).
   - `subscription_plan`: `trial|monthly|semiannual|annual|lifetime` (default: `trial`).
   - `expires_at`: limite global do plano; tokens são clampados a este limite quando aplicável.
   - `is_verified`: exige verificação antes de login.
@@ -36,7 +36,13 @@ Navegação: [Admins](ADMINS.md) · [Tools](TOOLS.md) · [Como usar (Users)](HOW
 - GET `/user/auth/verify-link?login=&code=` – confirma via link público (por `username` ou `email`).
 - POST `/user/auth/password-recovery` – redefine senha e envia código por e‑mail.
 - POST `/user/auth/verification-code` – reenvia código de verificação (por `login`).
+  - Regras: reaproveita o último código válido; se não houver, gera um novo e invalida códigos anteriores ainda não consumidos.
+  - Rate limit:
+    - Por IP: `VERIFY_RESEND_IP_LIMIT` por `VERIFY_RESEND_IP_WINDOW_MINUTES` (padrão: herda RECOVERY_IP_*)
+    - Por login/e-mail: `VERIFY_RESEND_LOGIN_LIMIT` por `VERIFY_RESEND_LOGIN_WINDOW_MINUTES` (padrão: herda RECOVERY_EMAIL_*)
 - POST `/user` – cria usuário: `{ email, username, password, confirm_password }`. Senhas devem coincidir; aplica política de senha. Cria conta `is_verified=false` e envia código de verificação por e‑mail.
+
+Observação (Vercel): ao consumir pela Vercel, use o prefixo `/api` (ex.: `/api/user/auth/token`). Após o próximo deploy, rotas sem `/api` também funcionarão por rewrite.
 
 # UsersSpaces
 
@@ -67,3 +73,22 @@ Navegação: [Admins](ADMINS.md) · [Tools](TOOLS.md) · [Como usar (Users)](HOW
   - [ ] Endpoints de perfil do usuário (senha, e-mail) e chaves de API por tool.
   - [ ] Paginação/filtro nas listagens (espaços e membros).
   - [ ] Testes de integração e exemplos adicionais nos HOWTOUSE.
+
+Redirecionamento e links de verificação
+
+- Os e‑mails enviados para criação, reenvio de código e recuperação de senha incluem:
+  - Um link “Verificar conta” apontando para `/user/auth/verify-link?login=&code=` (ou `/api/user/...` na Vercel quando a chamada foi para `/api`).
+  - O código de verificação em texto no corpo do e‑mail.
+- A base do link é definida assim:
+  1) Se `ALLOWED_REDIRECT_URIS` estiver configurada e `Origin`/`Referer` da requisição pertencer a essa lista, usa essa origem (frontend).
+  2) Caso contrário, usa `PUBLIC_BASE_URL`.
+  3) Se também estiver vazia, usa a URL pública da própria API.
+
+Política de senha
+
+- Mínimo de 8 caracteres.
+- Se `PASSWORD_POLICY_STRICT=true`, exige maiúscula, minúscula, número e caractere especial.
+
+Ambiente de teste (@domain.com)
+
+- Na criação e no reenvio de código de usuários, se o e‑mail terminar com `@domain.com`, o sistema não envia e‑mail (apenas registra o código no banco). Útil para testes.

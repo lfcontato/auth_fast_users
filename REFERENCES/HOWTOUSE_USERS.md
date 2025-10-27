@@ -5,14 +5,15 @@ Manutenção: revise estes exemplos após qualquer mudança de rota, parâmetros
 
 # Base
 - Local: `http://localhost:8080`
-- Se estiver em Vercel: prefixe com `/api` se necessário.
+- Vercel: prefira `https://auth-fast-api.vercel.app/api/...`
+  - Observação: após o próximo deploy, `/user/...` sem `/api` também funcionará.
 
 # Login do Usuário
 
 ```
 curl -X POST http://localhost:8080/user/auth/token \
   -H 'Content-Type: application/json' \
-  -d '{"username":"usuario","password":"minhasenha"}'
+  -d '{"username":"usuario","password":"MinhaSenha123!"}'
 ```
 
 Resposta (200):
@@ -50,8 +51,14 @@ curl -X POST http://localhost:8080/user/auth/password-recovery \
 ```
 curl -X POST http://localhost:8080/user/auth/verification-code \
   -H 'Content-Type: application/json' \
--d '{"login":"usuario"}'
+  -d '{"login":"usuario"}'
 ```
+
+Notas:
+- Reaproveita o último código válido (24h por padrão). Se não houver, gera um novo e invalida anteriores não consumidos.
+- Rate limit:
+  - Por IP: `VERIFY_RESEND_IP_LIMIT`/`VERIFY_RESEND_IP_WINDOW_MINUTES` (default herda RECOVERY_IP_*)
+  - Por login/e-mail: `VERIFY_RESEND_LOGIN_LIMIT`/`VERIFY_RESEND_LOGIN_WINDOW_MINUTES` (default herda RECOVERY_EMAIL_*)
 
 # Criar Usuário (signup)
 ```
@@ -127,7 +134,18 @@ curl -s -X POST http://localhost:8080/user/auth/verify \
   -H 'Content-Type: application/json' \
   -d '{"code":"<NOVO_CODIGO>","password":"<NOVA_SENHA>"}' | jq .
 ```
-# Notas de campos (Users) — Regra
-- `tools_role`: default `guest`; opções: `guest|user|admin|root`.
-- `subscription_plan`: default `trial`; opções: `trial|monthly|semiannual|annual|lifetime`.
-- `password`: em fluxos de cadastro de usuário (quando presentes), é opcional; o sistema gera automaticamente quando omitida.
+
+# E-mails de verificação
+- O e‑mail de boas‑vindas envia um código e um link de verificação (botão “Verificar conta”).
+- A base do link é escolhida assim:
+  1) Se `ALLOWED_REDIRECT_URIS` estiver definida e a requisição tiver `Origin/Referer` que bata com a lista, usa essa origem (frontend).
+  2) Senão, usa `PUBLIC_BASE_URL`.
+  3) Se vazio, usa a URL pública da própria API.
+- Em Vercel, se a chamada for feita para `/api/...`, o link conterá `/api` para garantir funcionamento.
+- Ambiente de teste: ao criar usuário com e‑mail terminando em `@domain.com`, o sistema não enviará e‑mail (apenas grava o código). Use os endpoints de verificação para completar o fluxo.
+ - Em ambiente de teste, o reenvio para e‑mails `@domain.com` também não envia e‑mail; o código fica disponível via banco e pode ser usado pelos endpoints de verificação.
+
+# Notas de campos (Users)
+- `tools_role`: default `user`.
+- `subscription_plan`: default `trial`.
+- `password`: mínima de 8; se `PASSWORD_POLICY_STRICT=true`, precisa ter maiúscula, minúscula, número e especial.

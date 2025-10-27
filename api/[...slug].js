@@ -7,9 +7,11 @@ function joinURL(base, pathWithQuery) {
 }
 
 function getPathWithQuery(req) {
-  // Preserve /api prefix because upstream expects it (e.g., /api/user/auth/token)
+  // Ensure upstream receives paths under /api/* as expected by backend.
+  // Some runtimes may provide req.url without the /api prefix.
   const url = req.url || '';
-  return url || '/';
+  if (!url) return '/api';
+  return url.startsWith('/api') ? url : (url.startsWith('/') ? '/api' + url : '/api/' + url);
 }
 
 async function bufferBody(req) {
