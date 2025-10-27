@@ -24,7 +24,7 @@ async function bufferBody(req) {
   });
 }
 
-  module.exports = async (req, res) => {
+export default async function handler(req, res) {
     try {
       const pathWithQuery = getPathWithQuery(req);
       const targetUrl = joinURL(upstreamBase, pathWithQuery);
@@ -51,4 +51,4 @@ async function bufferBody(req) {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ success: false, code: 'proxy_error', message: String(err && err.message || err) }));
   }
-};
+}
