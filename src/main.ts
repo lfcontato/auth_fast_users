@@ -17,7 +17,7 @@ async function request(path: string, opts: RequestInit & { auth?: boolean; body?
   const text = await res.text().catch(() => '');
   let data: any = text;
   try { data = text ? JSON.parse(text) : null; } catch { /* keep text as-is */ }
-  if (!res.ok) throw { status: res.status, data };
+  if (!res.ok) throw { status: res.status, url, data };
   return data;
 }
 
@@ -228,6 +228,21 @@ function buildUI() {
   });
   spActions.append(btnList, formCreate);
   spPane.append(section('UsersSpaces', spActions), spOut);
+
+  // Diagnostics Pane (hidden within Login section footer)
+  const diag = el('div', 'mt-3 d-flex gap-2');
+  const btnPing = el('button', 'btn btn-outline-secondary btn-sm', 'Ping /healthz') as HTMLButtonElement;
+  btnPing.addEventListener('click', async () => {
+    try { const d = await request('/healthz'); loginOut.replaceChildren(alert('success', 'Health OK'), jsonPre(d)); }
+    catch (err) { loginOut.replaceChildren(alert('danger', 'Health FAIL'), jsonPre(err)); }
+  });
+  const btnWhoami = el('button', 'btn btn-outline-secondary btn-sm', 'Whoami') as HTMLButtonElement;
+  btnWhoami.addEventListener('click', async () => {
+    try { const d = await request('/user/whoami', { auth: true } as any); loginOut.replaceChildren(alert('success', 'Whoami'), jsonPre(d)); }
+    catch (err) { loginOut.replaceChildren(alert('danger', 'Whoami FAIL'), jsonPre(err)); }
+  });
+  diag.append(btnPing, btnWhoami);
+  loginPane.append(diag);
 
   panes.append(loginPane, signupPane, verifyPane, recPane, spPane);
   app.append(panes);
