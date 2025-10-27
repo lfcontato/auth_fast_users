@@ -24,16 +24,18 @@ async function bufferBody(req) {
   });
 }
 
-module.exports = async (req, res) => {
-  try {
-    const pathWithQuery = getPathWithQuery(req);
-    const targetUrl = joinURL(upstreamBase, pathWithQuery);
+  module.exports = async (req, res) => {
+    try {
+      const pathWithQuery = getPathWithQuery(req);
+      const targetUrl = joinURL(upstreamBase, pathWithQuery);
 
     const headers = { ...req.headers };
-    delete headers.host;
-    const init = { method: req.method, headers };
-    const body = await bufferBody(req);
-    if (body) init.body = body;
+      delete headers.host;
+    delete headers['content-length'];
+    delete headers['connection'];
+      const init = { method: req.method, headers };
+      const body = await bufferBody(req);
+      if (body) init.body = body;
 
     const upstreamRes = await fetch(targetUrl, init);
     res.statusCode = upstreamRes.status;
