@@ -1,0 +1,4 @@
+# Base da API pública quando hospedado na Vercel (ex.: usando funções /api)
+# Ajuste para o seu domínio do projeto Vercel, ou deixe relativo
+API_BASE=/api
+

@@ -19,16 +19,24 @@ Exemplos de servidor estático:
 
 Depois acesse: `http://localhost:5173`.
 
-Config de API via .env:
+Config de API via .env/env:
 - Edite `web/.env` e defina `API_BASE` (ex.: `API_BASE=http://localhost:8080`).
-- O front carrega esse arquivo em runtime; `localStorage` (campo “API Base” no topo) sobrescreve o valor do `.env` se você salvar por lá.
+- Caso seu host não sirva dotfiles (ex.: Vercel), use `web/env` (sem ponto). Há `web/env.example`.
+- O front carrega o arquivo `env` (ou `.env`) em runtime; `localStorage` (campo “API Base” no topo) sobrescreve o valor salvo.
 
 ## Estrutura
 - `index.html` — layout e seções
 - `style.css` — estilos básicos
 - `api.js` — cliente para as rotas (fetch)
 - `app.js` — lógica de UI e binding dos formulários
- - `.env` — configura `API_BASE` (há também `.env.example`)
+ - `.env` / `env` — configura `API_BASE` (há também `.env.example` e `env.example`)
+
+## Deploy na Vercel
+- O repositório inclui `vercel.json` para servir a pasta `web/` como estática.
+- O arquivo `web/env` é publicado para expor `API_BASE` em runtime (dotfiles não são publicados).
+- Ajuste `API_BASE` em `web/env` para seu domínio de API (ex.: `/api` se usar funções Serverless da Vercel ou um proxy).
+- Faça o deploy:
+  - `vercel` (preview) ou `vercel --prod` (produção)
 
 ## Notas
 - Tokens (`access_token` e `refresh_token`) ficam armazenados em `localStorage`.
