@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verificar Conta</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-light">
+    <div class="container py-4">
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title mb-3">Verificar Conta</h5>
+              <div id="info" class="mb-3"></div>
+              <div id="actions" class="d-flex gap-2 mb-3"></div>
+              <div id="req" class="mb-2"></div>
+              <div id="resp"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
+      function pre(obj){ const p=el('pre','bg-body-tertiary p-2 rounded border'); try{ p.textContent=JSON.stringify(obj,null,2);}catch{ p.textContent=String(obj);} return p; }
+      function alertEl(kind, text){ return el('div', `alert alert-${kind} py-2` , text); }
+      async function postJSON(url, body){ const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); const t=await res.text(); let d=t; try{ d=t?JSON.parse(t):null }catch{} if(!res.ok) throw {status:res.status, url, data:d}; return d; }
+      function maskCode(c){ if(!c) return ''; if(c.length<=8) return '***'; return c.slice(0,6)+'…'+c.slice(-4); }
+
+      const info = document.getElementById('info');
+      const actions = document.getElementById('actions');
+      const req = document.getElementById('req');
+      const resp = document.getElementById('resp');
+
+      (function init(){
+        try{
+          const url = new URL(window.location.href);
+          const path = (url.pathname||'').replace(/\/$/, '');
+          const isVerifyPath = path === '/user/auth/verify-link' || path.endsWith('/user/auth/verify-link');
+          const p = url.searchParams;
+          let code = p.get('code') || '';
+          let login = p.get('login') || '';
+          if((!code || !login) && url.hash){ const hp = new URLSearchParams(url.hash.replace(/^#/,'')); code = code || hp.get('code') || ''; login = login || hp.get('login') || ''; }
+          if(!isVerifyPath){ info.replaceChildren(alertEl('danger','Caminho inválido para verificação.')); return; }
+          if(!code || !login){ info.replaceChildren(alertEl('danger','Link de verificação incompleto: faltam parâmetros.')); return; }
+          info.replaceChildren(pre({ code, code_masked: maskCode(code), login }));
+          const btn = el('button','btn btn-primary','Confirmar');
+          const btnClose = el('button','btn btn-outline-secondary','Fechar página');
+          btnClose.addEventListener('click', ()=>{ window.close(); });
+          btn.addEventListener('click', async ()=>{
+            btn.disabled = true; req.replaceChildren(pre({ url:'/api/user/auth/verify-link', body:{ code: '***', login } }));
+            resp.replaceChildren(alertEl('info','Confirmando...'));
+            try{
+              const data = await postJSON('/api/user/auth/verify-link', { code, login });
+              resp.replaceChildren(alertEl('success','Conta verificada com sucesso. Você pode fechar esta página.'), pre(data));
+            }catch(err){
+              resp.replaceChildren(alertEl('danger','Falha ao verificar a conta'), pre(err));
+            }finally{
+              btn.disabled = false;
+            }
+          });
+          actions.replaceChildren(btn, btnClose);
+        }catch(e){
+          info.replaceChildren(alertEl('danger','Não foi possível processar o link de verificação.'));
+        }
+      })();
+    </script>
+  </body>
+  </html>
