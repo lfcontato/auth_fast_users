@@ -127,20 +127,25 @@ function buildUI() {
     <div class="col-md-4"><label class="form-label">Password</label><input name="password" type="password" class="form-control" required></div>
     <div class="col-12"><button class="btn btn-primary" type="submit">Entrar</button> <button id="btn-refresh" class="btn btn-secondary" type="button">Refresh Token</button> <button id="btn-logout" class="btn btn-outline-danger" type="button">Sair</button></div>
   `;
-  const loginOut = el('div');
+  const loginReqOut = el('div');
+  const loginRespOut = el('div');
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(loginForm as HTMLFormElement);
-    try { const resp = await api.login({ username: String(fd.get('username')), password: String(fd.get('password')) }); saveTokens(resp); updateLoginStatus(); loginOut.replaceChildren(alert('success', 'Login ok'), jsonPre(resp)); }
-    catch (err) { loginOut.replaceChildren(alert('danger', 'Falha no login'), jsonPre(err)); }
+    const username = String(fd.get('username'));
+    const password = String(fd.get('password'));
+    loginReqOut.replaceChildren(jsonPre({ url: '/api/user/auth/token', body: { username, password: '***' } }));
+    try { const resp = await api.login({ username, password }); saveTokens(resp); updateLoginStatus(); loginRespOut.replaceChildren(alert('success', 'Login ok'), jsonPre(resp)); }
+    catch (err) { loginRespOut.replaceChildren(alert('danger', 'Falha no login'), jsonPre(err)); }
   });
   loginForm.querySelector('#btn-refresh')!.addEventListener('click', async () => {
-    const t = loadTokens(); if (!t.refresh_token) { loginOut.replaceChildren(alert('danger', 'Sem refresh_token')); return; }
-    try { const resp = await api.refresh(t.refresh_token); saveTokens(resp); updateLoginStatus(); loginOut.replaceChildren(alert('success', 'Refresh ok'), jsonPre(resp)); }
-    catch (err) { loginOut.replaceChildren(alert('danger', 'Falha no refresh'), jsonPre(err)); }
+    const t = loadTokens(); if (!t.refresh_token) { loginRespOut.replaceChildren(alert('danger', 'Sem refresh_token')); return; }
+    loginReqOut.replaceChildren(jsonPre({ url: '/api/user/auth/token/refresh', body: { refresh_token: '***' } }));
+    try { const resp = await api.refresh(t.refresh_token); saveTokens(resp); updateLoginStatus(); loginRespOut.replaceChildren(alert('success', 'Refresh ok'), jsonPre(resp)); }
+    catch (err) { loginRespOut.replaceChildren(alert('danger', 'Falha no refresh'), jsonPre(err)); }
   });
-  loginForm.querySelector('#btn-logout')!.addEventListener('click', () => { clearTokens(); updateLoginStatus(); loginOut.replaceChildren(alert('success', 'Sessão encerrada')); });
-  loginPane.append(section('Login', el('div', '', '')), loginStatus, loginForm, loginOut);
+  loginForm.querySelector('#btn-logout')!.addEventListener('click', () => { clearTokens(); updateLoginStatus(); loginRespOut.replaceChildren(alert('success', 'Sessão encerrada')); });
+  loginPane.append(section('Login', el('div', '', '')), loginStatus, loginForm, section('Request', loginReqOut), section('Response', loginRespOut));
 
   // Signup Pane
   const signupPane = el('div', 'tab-pane fade');
@@ -153,7 +158,8 @@ function buildUI() {
     <div class="col-md-4"><label class="form-label">Confirmar Senha</label><input name="confirm_password" type="password" class="form-control" required></div>
     <div class="col-12"><button class="btn btn-primary" type="submit">Criar Conta</button></div>
   `;
-  const signupOut = el('div');
+  const signupReqOut = el('div');
+  const signupRespOut = el('div');
   signupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(signupForm as HTMLFormElement);
@@ -161,15 +167,16 @@ function buildUI() {
     const username = String(fd.get('username') || '');
     const password = String(fd.get('password') || '');
     const confirm_password = String(fd.get('confirm_password') || '');
-    if (!password || !confirm_password) { signupOut.replaceChildren(alert('danger', 'Senha e confirmação são obrigatórias')); return; }
-    if (password !== confirm_password) { signupOut.replaceChildren(alert('danger', 'As senhas não coincidem')); return; }
+    if (!password || !confirm_password) { signupRespOut.replaceChildren(alert('danger', 'Senha e confirmação são obrigatórias')); return; }
+    if (password !== confirm_password) { signupRespOut.replaceChildren(alert('danger', 'As senhas não coincidem')); return; }
     const redirect_uri = window.location.origin;
     const payload: any = { email, username, password, confirm_password, redirect_uri };
-    signupOut.replaceChildren(alert('success', 'Enviando...'), jsonPre({ url: '/api/user', origin: window.location.origin, payload }));
-    try { const resp = await api.createUser(payload); signupOut.replaceChildren(alert('success', 'Usuário criado'), jsonPre(resp)); }
-    catch (err) { signupOut.replaceChildren(alert('danger', 'Falha ao criar usuário'), jsonPre(err)); }
+    signupReqOut.replaceChildren(jsonPre({ url: '/api/user', origin: window.location.origin, payload: { ...payload, password: '***', confirm_password: '***' } }));
+    signupRespOut.replaceChildren(alert('success', 'Enviando...'));
+    try { const resp = await api.createUser(payload); signupRespOut.replaceChildren(alert('success', 'Usuário criado'), jsonPre(resp)); }
+    catch (err) { signupRespOut.replaceChildren(alert('danger', 'Falha ao criar usuário'), jsonPre(err)); }
   });
-  signupPane.append(section('Criar Usuário (signup)', signupForm), signupOut);
+  signupPane.append(section('Criar Usuário (signup)', signupForm), section('Request', signupReqOut), section('Response', signupRespOut));
 
   // Verify Pane
   const verifyPane = el('div', 'tab-pane fade');
@@ -257,13 +264,13 @@ function buildUI() {
   const diag = el('div', 'mt-3 d-flex gap-2');
   const btnPing = el('button', 'btn btn-outline-secondary btn-sm', 'Ping /healthz') as HTMLButtonElement;
   btnPing.addEventListener('click', async () => {
-    try { const d = await request('/healthz'); loginOut.replaceChildren(alert('success', 'Health OK'), jsonPre(d)); }
-    catch (err) { loginOut.replaceChildren(alert('danger', 'Health FAIL'), jsonPre(err)); }
+    try { const d = await request('/healthz'); loginRespOut.replaceChildren(alert('success', 'Health OK'), jsonPre(d)); }
+    catch (err) { loginRespOut.replaceChildren(alert('danger', 'Health FAIL'), jsonPre(err)); }
   });
   const btnWhoami = el('button', 'btn btn-outline-secondary btn-sm', 'Whoami') as HTMLButtonElement;
   btnWhoami.addEventListener('click', async () => {
-    try { const d = await request('/user/whoami', { auth: true } as any); loginOut.replaceChildren(alert('success', 'Whoami'), jsonPre(d)); }
-    catch (err) { loginOut.replaceChildren(alert('danger', 'Whoami FAIL'), jsonPre(err)); }
+    try { const d = await request('/user/whoami', { auth: true } as any); loginRespOut.replaceChildren(alert('success', 'Whoami'), jsonPre(d)); }
+    catch (err) { loginRespOut.replaceChildren(alert('danger', 'Whoami FAIL'), jsonPre(err)); }
   });
   diag.append(btnPing, btnWhoami);
   loginPane.append(diag);
