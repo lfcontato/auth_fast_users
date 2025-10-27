@@ -38,7 +38,7 @@ const api = {
   refresh: (refresh_token: string) => request('/user/auth/token/refresh', { method: 'POST', body: { refresh_token } }),
   verify: (p: { code: string; password: string; }) => request('/user/auth/verify', { method: 'POST', body: p }),
   verifyLink: (p: { login: string; code: string; }) => `${apiBase}/user/auth/verify-link?login=${encodeURIComponent(p.login)}&code=${encodeURIComponent(p.code)}`,
-  confirmVerifyLink: (p: { login: string; code: string; }) => request('/user/auth/verify-link', { method: 'POST', body: p }),
+  confirmVerifyLink: (p: { login: string; code: string; }) => request(`/user/auth/verify-link?login=${encodeURIComponent(p.login)}&code=${encodeURIComponent(p.code)}`, { method: 'GET' }),
   resendCode: (p: { login: string; }) => request('/user/auth/verification-code', { method: 'POST', body: p }),
   recovery: (p: { email: string; }) => request('/user/auth/password-recovery', { method: 'POST', body: p }),
   listSpaces: () => request('/user/spaces', { auth: true }),

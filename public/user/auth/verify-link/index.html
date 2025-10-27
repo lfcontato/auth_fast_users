@@ -26,7 +26,7 @@
       function el(tag, cls, html){ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; }
       function pre(obj){ const p=el('pre','bg-body-tertiary p-2 rounded border'); try{ p.textContent=JSON.stringify(obj,null,2);}catch{ p.textContent=String(obj);} return p; }
       function alertEl(kind, text){ return el('div', `alert alert-${kind} py-2` , text); }
-      async function postJSON(url, body){ const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); const t=await res.text(); let d=t; try{ d=t?JSON.parse(t):null }catch{} if(!res.ok) throw {status:res.status, url, data:d}; return d; }
+      async function getJSON(url){ const res = await fetch(url, { method:'GET' }); const t=await res.text(); let d=t; try{ d=t?JSON.parse(t):null }catch{} if(!res.ok) throw {status:res.status, url, data:d}; return d; }
       function maskCode(c){ if(!c) return ''; if(c.length<=8) return '***'; return c.slice(0,6)+'…'+c.slice(-4); }
 
       const info = document.getElementById('info');
@@ -50,10 +50,12 @@
           const btnClose = el('button','btn btn-outline-secondary','Fechar página');
           btnClose.addEventListener('click', ()=>{ window.close(); });
           btn.addEventListener('click', async ()=>{
-            btn.disabled = true; req.replaceChildren(pre({ url:'/api/user/auth/verify-link', body:{ code: '***', login } }));
+            btn.disabled = true;
+            const urlAPI = `/api/user/auth/verify-link?login=${encodeURIComponent(login)}&code=${encodeURIComponent(code)}`;
+            req.replaceChildren(pre({ url: urlAPI, method: 'GET' }));
             resp.replaceChildren(alertEl('info','Confirmando...'));
             try{
-              const data = await postJSON('/api/user/auth/verify-link', { code, login });
+              const data = await getJSON(urlAPI);
               resp.replaceChildren(alertEl('success','Conta verificada com sucesso. Você pode fechar esta página.'), pre(data));
             }catch(err){
               resp.replaceChildren(alertEl('danger','Falha ao verificar a conta'), pre(err));
