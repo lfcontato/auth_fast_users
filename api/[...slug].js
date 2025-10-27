@@ -7,8 +7,9 @@ function joinURL(base, pathWithQuery) {
 }
 
 function getPathWithQuery(req) {
+  // Preserve /api prefix because upstream expects it (e.g., /api/user/auth/token)
   const url = req.url || '';
-  return url.replace(/^\/api/, '') || '/';
+  return url || '/';
 }
 
 async function bufferBody(req) {
@@ -47,4 +48,3 @@ module.exports = async (req, res) => {
     res.end(JSON.stringify({ success: false, code: 'proxy_error', message: String(err && err.message || err) }));
   }
 };
-

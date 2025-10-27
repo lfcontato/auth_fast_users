@@ -142,6 +142,7 @@ function buildUI() {
       payload.password = password;
       payload.confirm_password = confirm_password;
     }
+    signupOut.replaceChildren(alert('success', 'Enviando...'), jsonPre({ url: '/api/user', payload }));
     try { const resp = await api.createUser(payload); signupOut.replaceChildren(alert('success', 'Usuário criado'), jsonPre(resp)); }
     catch (err) { signupOut.replaceChildren(alert('danger', 'Falha ao criar usuário'), jsonPre(err)); }
   });
