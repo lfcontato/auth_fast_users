@@ -50,7 +50,19 @@ curl -X POST http://localhost:8080/user/auth/password-recovery \
 ```
 curl -X POST http://localhost:8080/user/auth/verification-code \
   -H 'Content-Type: application/json' \
-  -d '{"login":"usuario"}'
+-d '{"login":"usuario"}'
+```
+
+# Criar Usuário (signup)
+```
+curl -X POST http://localhost:8080/user \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email":"user@example.com",
+    "username":"usuario",
+    "password":"MinhaSenha123!",
+    "confirm_password":"MinhaSenha123!"
+  }'
 ```
 
 # Criar UsersSpace (requer tools_role=admin)

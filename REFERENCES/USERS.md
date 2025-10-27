@@ -36,6 +36,7 @@ Navegação: [Admins](ADMINS.md) · [Tools](TOOLS.md) · [Como usar (Users)](HOW
 - GET `/user/auth/verify-link?login=&code=` – confirma via link público (por `username` ou `email`).
 - POST `/user/auth/password-recovery` – redefine senha e envia código por e‑mail.
 - POST `/user/auth/verification-code` – reenvia código de verificação (por `login`).
+- POST `/user` – cria usuário: `{ email, username, password, confirm_password }`. Senhas devem coincidir; aplica política de senha. Cria conta `is_verified=false` e envia código de verificação por e‑mail.
 
 # UsersSpaces
 

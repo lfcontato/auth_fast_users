@@ -30,6 +30,7 @@ const api = {
   recovery: (p: { email: string; }) => request('/user/auth/password-recovery', { method: 'POST', body: p }),
   listSpaces: () => request('/user/spaces', { auth: true }),
   createSpace: (p: { name: string }) => request('/user/spaces', { method: 'POST', auth: true, body: p }),
+  createUser: (p: { email: string; username: string; password?: string; confirm_password?: string; }) => request('/user', { method: 'POST', body: p }),
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, html?: string) {
@@ -67,6 +68,7 @@ function buildUI() {
   const panes = el('div', 'tab-content pt-3');
   const tabDefs = [
     { id: 'login', label: 'Login' },
+    { id: 'signup', label: 'Criar Usuário' },
     { id: 'verify', label: 'Verificar' },
     { id: 'recovery', label: 'Recuperar Senha' },
     { id: 'spaces', label: 'UsersSpaces' },
@@ -113,6 +115,36 @@ function buildUI() {
   });
   loginForm.querySelector('#btn-logout')!.addEventListener('click', () => { clearTokens(); loginOut.replaceChildren(alert('success', 'Sessão encerrada')); });
   loginPane.append(section('Login', el('div', '', '')), loginForm, loginOut);
+
+  // Signup Pane
+  const signupPane = el('div', 'tab-pane fade');
+  signupPane.id = 'pane-signup';
+  const signupForm = el('form', 'row g-2');
+  signupForm.innerHTML = `
+    <div class="col-md-4"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
+    <div class="col-md-4"><label class="form-label">Username</label><input name="username" class="form-control" required></div>
+    <div class="col-md-4"><label class="form-label">Senha (opcional)</label><input name="password" type="password" class="form-control" placeholder="Deixe vazio p/ gerar"></div>
+    <div class="col-md-4"><label class="form-label">Confirmar Senha</label><input name="confirm_password" type="password" class="form-control" placeholder="Se informar senha"></div>
+    <div class="col-12"><button class="btn btn-primary" type="submit">Criar Conta</button></div>
+    <div class="col-12 text-body-secondary small">Se a senha for omitida, o backend pode gerar automaticamente conforme política.</div>
+  `;
+  const signupOut = el('div');
+  signupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(signupForm as HTMLFormElement);
+    const email = String(fd.get('email') || '');
+    const username = String(fd.get('username') || '');
+    const password = String(fd.get('password') || '');
+    const confirm_password = String(fd.get('confirm_password') || '');
+    const payload: any = { email, username };
+    if (password) {
+      payload.password = password;
+      payload.confirm_password = confirm_password;
+    }
+    try { const resp = await api.createUser(payload); signupOut.replaceChildren(alert('success', 'Usuário criado'), jsonPre(resp)); }
+    catch (err) { signupOut.replaceChildren(alert('danger', 'Falha ao criar usuário'), jsonPre(err)); }
+  });
+  signupPane.append(section('Criar Usuário (signup)', signupForm), signupOut);
 
   // Verify Pane
   const verifyPane = el('div', 'tab-pane fade');
@@ -196,9 +228,8 @@ function buildUI() {
   spActions.append(btnList, formCreate);
   spPane.append(section('UsersSpaces', spActions), spOut);
 
-  panes.append(loginPane, verifyPane, recPane, spPane);
+  panes.append(loginPane, signupPane, verifyPane, recPane, spPane);
   app.append(panes);
 }
 
 buildUI();
-
