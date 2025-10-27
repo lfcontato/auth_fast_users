@@ -1,6 +1,7 @@
 (() => {
   const STORAGE_KEY = 'users_front_config_v1';
   const TOKENS_KEY = 'users_front_tokens_v1';
+  let env = {};
 
   function loadConfig() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
@@ -14,9 +15,35 @@
   function saveTokens(t) { localStorage.setItem(TOKENS_KEY, JSON.stringify(t || {})); }
   function clearTokens() { localStorage.removeItem(TOKENS_KEY); }
 
+  async function loadEnv() {
+    // Tenta carregar .env (linhas KEY=VALUE). Ignora erros se não existir.
+    try {
+      const res = await fetch('./.env', { cache: 'no-store' });
+      if (!res.ok) return;
+      const text = await res.text();
+      const lines = text.split(/\r?\n/);
+      const map = {};
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line || line.startsWith('#')) continue;
+        const eq = line.indexOf('=');
+        if (eq === -1) continue;
+        const k = line.slice(0, eq).trim();
+        let v = line.slice(eq + 1).trim();
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+          v = v.slice(1, -1);
+        }
+        map[k] = v;
+      }
+      env = {
+        baseURL: map.API_BASE || map.BASE_URL || map.API_URL || env.baseURL,
+      };
+    } catch (_) { /* ignore */ }
+  }
+
   function getBaseURL() {
     const cfg = loadConfig();
-    return cfg.baseURL || 'http://localhost:8080';
+    return cfg.baseURL || env.baseURL || 'http://localhost:8080';
   }
 
   async function request(path, options = {}) {
@@ -66,6 +93,7 @@
   }
 
   window.UsersFront = {
+    loadEnv,
     loadConfig, saveConfig, getBaseURL,
     loadTokens, saveTokens, clearTokens,
     apiLogin, apiRefresh, apiVerify, apiVerifyLinkURL,
@@ -73,4 +101,3 @@
     apiListSpaces, apiCreateSpace,
   };
 })();
-

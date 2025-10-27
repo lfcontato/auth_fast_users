@@ -19,16 +19,18 @@ Exemplos de servidor estático:
 
 Depois acesse: `http://localhost:5173`.
 
-Na parte superior do app há um campo “API Base” para ajustar a URL da API (salva em localStorage).
+Config de API via .env:
+- Edite `web/.env` e defina `API_BASE` (ex.: `API_BASE=http://localhost:8080`).
+- O front carrega esse arquivo em runtime; `localStorage` (campo “API Base” no topo) sobrescreve o valor do `.env` se você salvar por lá.
 
 ## Estrutura
 - `index.html` — layout e seções
 - `style.css` — estilos básicos
 - `api.js` — cliente para as rotas (fetch)
 - `app.js` — lógica de UI e binding dos formulários
+ - `.env` — configura `API_BASE` (há também `.env.example`)
 
 ## Notas
 - Tokens (`access_token` e `refresh_token`) ficam armazenados em `localStorage`.
 - Endpoints privados usam `Authorization: Bearer <access_token>`.
 - Caso a API esteja atrás de um gateway (ex.: Vercel), ajuste a base para incluir o prefixo (ex.: `/api`).
-

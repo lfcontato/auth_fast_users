@@ -145,7 +145,11 @@
     });
   }
 
-  function boot() {
+  async function boot() {
+    // Carrega .env antes de montar UI (permite definir API_BASE em arquivo)
+    if (window.UsersFront && UsersFront.loadEnv) {
+      try { await UsersFront.loadEnv(); } catch (_) {}
+    }
     initBase();
     initNav();
     initLogin();
@@ -156,6 +160,5 @@
     showView('login');
   }
 
-  document.addEventListener('DOMContentLoaded', boot);
+  document.addEventListener('DOMContentLoaded', () => { boot(); });
 })();
-
