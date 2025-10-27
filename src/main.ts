@@ -124,10 +124,9 @@ function buildUI() {
   signupForm.innerHTML = `
     <div class="col-md-4"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
     <div class="col-md-4"><label class="form-label">Username</label><input name="username" class="form-control" required></div>
-    <div class="col-md-4"><label class="form-label">Senha (opcional)</label><input name="password" type="password" class="form-control" placeholder="Deixe vazio p/ gerar"></div>
-    <div class="col-md-4"><label class="form-label">Confirmar Senha</label><input name="confirm_password" type="password" class="form-control" placeholder="Se informar senha"></div>
+    <div class="col-md-4"><label class="form-label">Senha</label><input name="password" type="password" class="form-control" required></div>
+    <div class="col-md-4"><label class="form-label">Confirmar Senha</label><input name="confirm_password" type="password" class="form-control" required></div>
     <div class="col-12"><button class="btn btn-primary" type="submit">Criar Conta</button></div>
-    <div class="col-12 text-body-secondary small">Se a senha for omitida, o backend pode gerar automaticamente conforme política.</div>
   `;
   const signupOut = el('div');
   signupForm.addEventListener('submit', async (e) => {
@@ -137,12 +136,10 @@ function buildUI() {
     const username = String(fd.get('username') || '');
     const password = String(fd.get('password') || '');
     const confirm_password = String(fd.get('confirm_password') || '');
-    const payload: any = { email, username };
-    if (password) {
-      payload.password = password;
-      payload.confirm_password = confirm_password;
-    }
-    signupOut.replaceChildren(alert('success', 'Enviando...'), jsonPre({ url: '/api/user', payload }));
+    if (!password || !confirm_password) { signupOut.replaceChildren(alert('danger', 'Senha e confirmação são obrigatórias')); return; }
+    if (password !== confirm_password) { signupOut.replaceChildren(alert('danger', 'As senhas não coincidem')); return; }
+    const payload: any = { email, username, password, confirm_password };
+    signupOut.replaceChildren(alert('success', 'Enviando...'), jsonPre({ url: '/api/user', origin: window.location.origin, payload }));
     try { const resp = await api.createUser(payload); signupOut.replaceChildren(alert('success', 'Usuário criado'), jsonPre(resp)); }
     catch (err) { signupOut.replaceChildren(alert('danger', 'Falha ao criar usuário'), jsonPre(err)); }
   });
