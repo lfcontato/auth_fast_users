@@ -38,6 +38,7 @@ const api = {
   refresh: (refresh_token: string) => request('/user/auth/token/refresh', { method: 'POST', body: { refresh_token } }),
   verify: (p: { code: string; password: string; }) => request('/user/auth/verify', { method: 'POST', body: p }),
   verifyLink: (p: { login: string; code: string; }) => `${apiBase}/user/auth/verify-link?login=${encodeURIComponent(p.login)}&code=${encodeURIComponent(p.code)}`,
+  confirmVerifyLink: (p: { login: string; code: string; }) => request('/user/auth/verify-link', { method: 'POST', body: p }),
   resendCode: (p: { login: string; }) => request('/user/auth/verification-code', { method: 'POST', body: p }),
   recovery: (p: { email: string; }) => request('/user/auth/password-recovery', { method: 'POST', body: p }),
   listSpaces: () => request('/user/spaces', { auth: true }),
@@ -92,6 +93,7 @@ function buildUI() {
   function makeTab(id: string, label: string, active?: boolean) {
     const li = el('li', 'nav-item');
     const a = el('a', 'nav-link' + (active ? ' active' : ''), label) as HTMLAnchorElement;
+    a.id = `tab-${id}`;
     a.href = '#';
     a.addEventListener('click', (ev) => {
       ev.preventDefault();
@@ -194,18 +196,43 @@ function buildUI() {
     try { const resp = await api.verify({ code: String(fd.get('code')), password: String(fd.get('password')) }); verifyOut.replaceChildren(alert('success', 'Conta verificada'), jsonPre(resp)); }
     catch (err) { verifyOut.replaceChildren(alert('danger', 'Falha na verificação'), jsonPre(err)); }
   });
-  const linkForm = el('form', 'row g-2');
-  linkForm.innerHTML = `
-    <div class="col-md-4"><label class="form-label">Login</label><input name="login" class="form-control" required></div>
-    <div class="col-md-4"><label class="form-label">Código</label><input name="code" class="form-control" required></div>
-    <div class="col-12"><button class="btn btn-secondary" type="submit">Abrir Link</button></div>
-  `;
-  linkForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const fd = new FormData(linkForm as HTMLFormElement);
-    const href = api.verifyLink({ login: String(fd.get('login')), code: String(fd.get('code')) });
-    window.open(href, '_blank');
-  });
+  // Verify via Link (auto-preenchimento a partir da URL)
+  const linkArea = el('div', 'row g-2');
+  const linkInfo = el('div');
+  const linkAction = el('div');
+  const linkReqOut = el('div');
+  const linkRespOut = el('div');
+  function setupVerifyLinkFromLocation() {
+    const path = (window.location.pathname || '').replace(/\/$/, '');
+    const usp = new URLSearchParams(window.location.search || '');
+    const code = usp.get('code') || '';
+    const login = usp.get('login') || '';
+    if (path === '/user/auth/verify-link' && code && login) {
+      linkInfo.replaceChildren(jsonPre({ code, login }));
+      const btn = el('button', 'btn btn-secondary', 'Confirmar') as HTMLButtonElement;
+      btn.addEventListener('click', async () => {
+        linkReqOut.replaceChildren(jsonPre({ url: '/api/user/auth/verify-link', body: { code: '***', login } }));
+        linkRespOut.replaceChildren(alert('success', 'Confirmando...'));
+        try { const resp = await api.confirmVerifyLink({ code, login }); linkRespOut.replaceChildren(alert('success', 'Conta verificada'), jsonPre(resp)); }
+        catch (err) { linkRespOut.replaceChildren(alert('danger', 'Falha ao verificar'), jsonPre(err)); }
+      });
+      linkAction.replaceChildren(btn);
+      // Ativa aba Verificar automaticamente
+      panes.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active', 'show'));
+      tabs.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      (document.getElementById('pane-verify')!).classList.add('active', 'show');
+      (document.getElementById('tab-verify') as HTMLElement | null)?.classList.add('active');
+    } else {
+      linkInfo.replaceChildren(el('div', 'text-body-secondary', 'Abra o link recebido por e-mail para preencher automaticamente.'));
+      linkAction.replaceChildren();
+      linkReqOut.replaceChildren();
+      linkRespOut.replaceChildren();
+    }
+  }
+  linkArea.append(section('Dados do Link', linkInfo), section('Ação', linkAction), section('Request', linkReqOut), section('Response', linkRespOut));
+  setupVerifyLinkFromLocation();
+  window.addEventListener('popstate', setupVerifyLinkFromLocation);
+
   const resendForm = el('form', 'row g-2');
   resendForm.innerHTML = `
     <div class="col-md-4"><label class="form-label">Login</label><input name="login" class="form-control" required></div>
@@ -217,7 +244,7 @@ function buildUI() {
     try { const resp = await api.resendCode({ login: String(fd.get('login')) }); verifyOut.replaceChildren(alert('success', 'Código reenviado'), jsonPre(resp)); }
     catch (err) { verifyOut.replaceChildren(alert('danger', 'Falha ao reenviar'), jsonPre(err)); }
   });
-  verifyPane.append(section('Verificar (código + senha)', verifyForm), section('Verificar via Link', linkForm), section('Reenviar Código', resendForm), verifyOut);
+  verifyPane.append(section('Verificar (código + senha)', verifyForm), section('Verificar via Link', linkArea), section('Reenviar Código', resendForm), verifyOut);
 
   // Recovery Pane
   const recPane = el('div', 'tab-pane fade');
