@@ -14,8 +14,9 @@ async function request(path: string, opts: RequestInit & { auth?: boolean; body?
   const tokens = loadTokens();
   if ((opts as any).auth && tokens.access_token) headers['Authorization'] = `Bearer ${tokens.access_token}`;
   const res = await fetch(url, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
-  let data: any;
-  try { data = await res.json(); } catch { data = await res.text(); }
+  const text = await res.text().catch(() => '');
+  let data: any = text;
+  try { data = text ? JSON.parse(text) : null; } catch { /* keep text as-is */ }
   if (!res.ok) throw { status: res.status, data };
   return data;
 }
