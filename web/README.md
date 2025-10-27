@@ -32,9 +32,11 @@ Config de API via .env/env:
  - `.env` / `env` — configura `API_BASE` (há também `.env.example` e `env.example`)
 
 ## Deploy na Vercel
-- O repositório inclui `vercel.json` para servir a pasta `web/` como estática.
+- O repositório inclui `vercel.json` para servir a pasta `web/` como estática e publicar funções em `api/*`.
 - O arquivo `web/env` é publicado para expor `API_BASE` em runtime (dotfiles não são publicados).
-- Ajuste `API_BASE` em `web/env` para seu domínio de API (ex.: `/api` se usar funções Serverless da Vercel ou um proxy).
+- Proxy opcional via Serverless:
+  - Há uma função catch‑all `api/[...path].js` que encaminha `https://seu-app.vercel.app/api/*` para o backend definido na env `UPSTREAM_API_BASE` (configure no painel da Vercel em Project Settings → Environment Variables).
+  - Se usar o proxy, deixe `API_BASE=/api` em `web/env`.
 - Faça o deploy:
   - `vercel` (preview) ou `vercel --prod` (produção)
 

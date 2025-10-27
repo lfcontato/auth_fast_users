@@ -1,4 +1,4 @@
 # Base da API pública quando hospedado na Vercel (ex.: usando funções /api)
 # Ajuste para o seu domínio do projeto Vercel, ou deixe relativo
+# Se usar o proxy serverless incluso neste repo, deixe como "/api".
 API_BASE=/api
-

@@ -1,0 +1,17 @@
+# Exclude local Node artifacts that break Go build on Vercel
+node_modules
+package-lock.json
+package.json
+logs_vercel/
+
+# Local caches/binaries not needed in the serverless build
+.vercel/cache
+server
+devseed
+
+# Editors and misc
+.env
+.vscode
+.idea
+*.log
+*.tmp

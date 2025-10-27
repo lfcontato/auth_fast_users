@@ -1,11 +1,13 @@
 {
   "version": 2,
   "builds": [
-    { "src": "web/**", "use": "@vercel/static" }
+    { "src": "web/**", "use": "@vercel/static" },
+    { "src": "api/**", "use": "@vercel/node" }
   ],
   "routes": [
     { "src": "^/$", "dest": "web/index.html" },
-    { "src": "/env", "dest": "web/env" },
-    { "src": "/(.*)", "dest": "web/$1" }
+    { "src": "^/env$", "dest": "web/env" },
+    // Não capturar caminhos /api/* com o estático; deixe irem para serverless
+    { "src": "^/(?!api/)(.*)$", "dest": "web/$1" }
   ]
 }
