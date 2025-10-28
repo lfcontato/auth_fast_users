@@ -40,7 +40,10 @@ const api = {
   verifyLink: (p: { login: string; code: string; }) => `${apiBase}/user/auth/verify-link?login=${encodeURIComponent(p.login)}&code=${encodeURIComponent(p.code)}`,
   confirmVerifyLink: (p: { login: string; code: string; }) => request(`/user/auth/verify-link?login=${encodeURIComponent(p.login)}&code=${encodeURIComponent(p.code)}`, { method: 'GET' }),
   resendCode: (p: { login: string; }) => request('/user/auth/verification-code', { method: 'POST', body: p }),
-  recovery: (p: { email: string; }) => request('/user/auth/password-recovery', { method: 'POST', body: p }),
+  recovery: (p: { email: string; redirect_uri?: string; }) => {
+    const redirect_uri = p.redirect_uri || window.location.origin;
+    return request('/user/auth/password-recovery', { method: 'POST', body: { ...p, redirect_uri } });
+  },
   listSpaces: () => request('/user/spaces', { auth: true }),
   createSpace: (p: { name: string }) => request('/user/spaces', { method: 'POST', auth: true, body: p }),
   createUser: (p: { email: string; username: string; password?: string; confirm_password?: string; redirect_uri?: string; }) => {
@@ -232,8 +235,9 @@ function buildUI() {
     e.preventDefault();
     const fd = new FormData(recForm as HTMLFormElement);
     const email = String(fd.get('email'));
-    recReqOut.replaceChildren(jsonPre({ url: '/api/user/auth/password-recovery', body: { email } }));
-    try { const resp = await api.recovery({ email }); recRespOut.replaceChildren(alert('success', 'Se existir, e-mail enviado'), jsonPre(resp)); }
+    const redirect_uri = window.location.origin;
+    recReqOut.replaceChildren(jsonPre({ url: '/api/user/auth/password-recovery', body: { email, redirect_uri } }));
+    try { const resp = await api.recovery({ email, redirect_uri }); recRespOut.replaceChildren(alert('success', 'Se existir, e-mail enviado'), jsonPre(resp)); }
     catch (err) { recRespOut.replaceChildren(alert('danger', 'Falha ao recuperar'), jsonPre(err)); }
   });
   recPane.append(section('Recuperar Senha', recForm), section('Request', recReqOut), section('Response', recRespOut));
