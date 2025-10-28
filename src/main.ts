@@ -192,6 +192,9 @@ function buildUI() {
     <div class="col-md-4"><label class="form-label">Senha atual</label><input name="password" type="password" class="form-control" required></div>
     <div class="col-12"><button class="btn btn-primary" type="submit">Verificar</button></div>
   `;
+  const verifyDesc = el('div', 'text-body-secondary', 'Esta função ativa a conta do usuário usando o código de verificação recebido por e‑mail e a senha atual definida no cadastro.');
+  const verifyBlock = el('div');
+  verifyBlock.append(verifyDesc, verifyForm);
   const verifyReqOut = el('div');
   const verifyRespOut = el('div');
   verifyForm.addEventListener('submit', async (e) => {
@@ -219,7 +222,7 @@ function buildUI() {
     try { const resp = await api.resendCode({ login }); verifyRespOut.replaceChildren(alert('success', 'Código reenviado'), jsonPre(resp)); }
     catch (err) { verifyRespOut.replaceChildren(alert('danger', 'Falha ao reenviar'), jsonPre(err)); }
   });
-  verifyPane.append(section('Verificar (código + senha)', verifyForm), section('Reenviar Código', resendForm), section('Request', verifyReqOut), section('Response', verifyRespOut));
+  verifyPane.append(section('Verificar (código + senha)', verifyBlock), section('Reenviar Código', resendForm), section('Request', verifyReqOut), section('Response', verifyRespOut));
 
   // Recovery Pane
   const recPane = el('div', 'tab-pane fade');
