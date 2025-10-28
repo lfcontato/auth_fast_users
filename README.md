@@ -53,6 +53,16 @@ Front-end SPA em TypeScript (Vite) com UI em HTML + Bootstrap e função Serverl
 - Status no front: UI ainda não implementada; ficará sob a aba UsersSpaces (após seleção do espaço) ou em abas próprias. Ver “Pendente”.
 - Referências: `REFERENCES/TOOLS.md`, `REFERENCES/HOWTOUSE_TOOLS.md`.
 
+## O que são UsersSpaces
+- Espaços de trabalho dos usuários onde as tools (Faciendum, Automata, etc.) operam.
+- Cada UsersSpace tem um identificador único (hash) e um proprietário (owner).
+- Qualquer usuário verificado pode criar um UsersSpace e passar a utilizá‑lo nas tools.
+- Acesso é controlado por ACL/membership do espaço (papéis: owner, admin, user, guest).
+- Na UI deste front:
+  - Aba “UsersSpaces”: cria e lista seus espaços.
+  - Abas “Faciendum” e “Automata”: usam um select para escolher o UsersSpace (por hash) antes de realizar ações.
+  - As chamadas para tools são feitas em rotas no formato `/api/user/spaces/{space_hash}/...` (proxy → `${END_POINT_API}`).
+
 ## Observações
 - O armazenamento de tokens é em `localStorage` (chave `users_spa_tokens_v1`).
 - Se seu backend exigir CORS, não é necessário habilitar quando usar o proxy (mesma origem).

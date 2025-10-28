@@ -54,8 +54,8 @@ const api = {
   fac_listBoards: (spaceId: string) => request(`/user/spaces/${encodeURIComponent(spaceId)}/faciendum/boards`, { auth: true }),
   fac_createBoard: (spaceId: string, p: { name: string }) => request(`/user/spaces/${encodeURIComponent(spaceId)}/faciendum/boards`, { method: 'POST', auth: true, body: p }),
   // Automata (skeleton)
-  aut_listKeys: (spaceId: string) => request(`/user/spaces/${encodeURIComponent(spaceId)}/automata/keys`, { auth: true }),
-  aut_createKey: (spaceId: string, p: { name: string; value: string }) => request(`/user/spaces/${encodeURIComponent(spaceId)}/automata/keys`, { method: 'POST', auth: true, body: p }),
+  aut_listKeys: (p: { space_hash: string; space_id: string | number }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/keys?space_id=${encodeURIComponent(String(p.space_id))}`, { auth: true }),
+  aut_createKey: (p: { space_hash: string; space_id: string | number; provider: string; name: string; api_key: string }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/keys?space_id=${encodeURIComponent(String(p.space_id))}`, { method: 'POST', auth: true, body: { provider: p.provider, name: p.name, api_key: p.api_key } }),
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, html?: string) {
@@ -83,6 +83,37 @@ function jsonPre(obj: unknown) {
   const pre = el('pre', 'bg-body-tertiary p-2 rounded border');
   pre.textContent = (() => { try { return JSON.stringify(obj, null, 2); } catch { return String(obj); } })();
   return pre;
+}
+
+async function fillSpacesSelect(selectEl: HTMLSelectElement) {
+  selectEl.disabled = true;
+  selectEl.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Selecione um espaço…';
+  selectEl.append(placeholder);
+  try {
+    const data: any = await api.listSpaces();
+    const list = Array.isArray(data) ? data : (data?.items || data?.data || []);
+    for (const it of list) {
+      const hash = (it?.hash ?? it?.space_hash ?? '');
+      const legacyId = (it?.id ?? it?.space_id ?? '');
+      const name = (it?.name ?? String(hash || legacyId));
+      if (!hash) continue;
+      const opt = document.createElement('option');
+      opt.value = String(hash);
+      opt.textContent = legacyId ? `${name} (${hash})` : `${name} (${hash})`;
+      if (legacyId) (opt as any).dataset.id = String(legacyId);
+      selectEl.append(opt);
+    }
+  } catch {
+    const errOpt = document.createElement('option');
+    errOpt.value = '';
+    errOpt.textContent = 'Falha ao carregar espaços (faça login)';
+    selectEl.append(errOpt);
+  } finally {
+    selectEl.disabled = false;
+  }
 }
 
 function buildUI() {
@@ -279,23 +310,27 @@ function buildUI() {
     catch (err) { spRespOut.replaceChildren(alert('danger', 'Falha ao criar (requer tools_role=admin)'), jsonPre(err)); }
   });
   spActions.append(btnList, formCreate);
-  spPane.append(section('UsersSpaces', spActions), section('Request', spReqOut), section('Response', spRespOut));
+  const spDesc = el('div', 'text-body-secondary', 'UsersSpaces são espaços de trabalho do usuário onde as tools (Faciendum, Automata, etc.) operam. Cada espaço tem um identificador e um proprietário. Crie um espaço e, em seguida, utilize-o nas ferramentas.');
+  const spWrap = el('div'); spWrap.append(spDesc, spActions);
+  spPane.append(section('UsersSpaces', spWrap), section('Request', spReqOut), section('Response', spRespOut));
 
   // Faciendum Pane (skeleton)
   const facPane = el('div', 'tab-pane fade');
   facPane.id = 'pane-faciendum';
   const facForm = el('form', 'row g-2 align-items-end');
   facForm.innerHTML = `
-    <div class="col-md-3"><label class="form-label">Space ID</label><input name="space_id" class="form-control" required></div>
+    <div class="col-md-3"><label class="form-label">UsersSpace</label><select name="space_id" class="form-select" required></select></div>
     <div class="col-md-4"><label class="form-label">Nome do Board</label><input name="board_name" class="form-control"></div>
     <div class="col-md-5 d-flex gap-2"><button class="btn btn-outline-secondary" type="button" id="btn-fac-list">Listar Boards</button><button class="btn btn-primary" type="submit">Criar Board</button></div>
   `;
   const facReqOut = el('div');
   const facRespOut = el('div');
+  const facSpaceSel = facForm.querySelector('select[name="space_id"]') as HTMLSelectElement;
+  fillSpacesSelect(facSpaceSel);
   facForm.querySelector('#btn-fac-list')!.addEventListener('click', async () => {
     const fd = new FormData(facForm as HTMLFormElement);
     const space_id = String(fd.get('space_id') || '');
-    if (!space_id) { facRespOut.replaceChildren(alert('danger', 'Informe o Space ID')); return; }
+    if (!space_id) { facRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace')); return; }
     facReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_id}/faciendum/boards`, method: 'GET', auth: true }));
     try { const data = await api.fac_listBoards(space_id); facRespOut.replaceChildren(alert('success', 'Boards listados'), jsonPre(data)); }
     catch (err) { facRespOut.replaceChildren(alert('danger', 'Falha ao listar boards'), jsonPre(err)); }
@@ -305,45 +340,105 @@ function buildUI() {
     const fd = new FormData(facForm as HTMLFormElement);
     const space_id = String(fd.get('space_id') || '');
     const name = String(fd.get('board_name') || '');
-    if (!space_id || !name) { facRespOut.replaceChildren(alert('danger', 'Informe Space ID e Nome do Board')); return; }
+    if (!space_id || !name) { facRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace e informe o Nome do Board')); return; }
     facReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_id}/faciendum/boards`, method: 'POST', auth: true, body: { name } }));
     try { const data = await api.fac_createBoard(space_id, { name }); facRespOut.replaceChildren(alert('success', 'Board criado'), jsonPre(data)); }
     catch (err) { facRespOut.replaceChildren(alert('danger', 'Falha ao criar board'), jsonPre(err)); }
   });
-  facPane.append(section('Faciendum – Boards', facForm), section('Request', facReqOut), section('Response', facRespOut));
+  const facDesc = el('div', 'text-body-secondary', 'Faciendum é a ferramenta de Kanban/To‑Do por UsersSpace. Organiza trabalho em Boards (quadros), Tracks (colunas) e Tasks (tarefas) com movimentação entre colunas.');
+  facPane.append(section('Faciendum – Boards', (() => { const wrap = el('div'); wrap.append(facDesc, facForm); return wrap; })()), section('Request', facReqOut), section('Response', facRespOut));
 
   // Automata Pane (skeleton)
   const autPane = el('div', 'tab-pane fade');
   autPane.id = 'pane-automata';
+  // Automata – Chats (list/create)
+  const autChatsForm = el('form', 'row g-2 align-items-end');
+  autChatsForm.innerHTML = `
+    <div class="col-md-3"><label class="form-label">UsersSpace</label><select name="space_id" class="form-select" required></select></div>
+    <div class="col-md-2"><label class="form-label">Prompt ID</label><input name="prompt_id" type="number" class="form-control" required></div>
+    <div class="col-md-5"><label class="form-label">Mensagem</label><input name="message" class="form-control" required></div>
+    <div class="col-md-2 d-flex gap-2"><button class="btn btn-outline-secondary" type="button" id="btn-autch-list">Listar Chats</button><button class="btn btn-primary" type="submit">Criar Chat</button></div>
+  `;
+  const autChatsReqOut = el('div');
+  const autChatsRespOut = el('div');
+  const autChatsSpaceSel = autChatsForm.querySelector('select[name="space_id"]') as HTMLSelectElement;
+  fillSpacesSelect(autChatsSpaceSel);
+  // API helpers for chats
+  (api as any).aut_listChats = (p: { space_hash: string; space_id: string | number }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/chats?space_id=${encodeURIComponent(String(p.space_id))}`, { auth: true });
+  (api as any).aut_createChat = (p: { space_hash: string; space_id: string | number; prompt_id: number; message: string }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/chats?space_id=${encodeURIComponent(String(p.space_id))}`, { method: 'POST', auth: true, body: { prompt_id: p.prompt_id, message: p.message } });
+  autChatsForm.querySelector('#btn-autch-list')!.addEventListener('click', async () => {
+    const fd = new FormData(autChatsForm as HTMLFormElement);
+    const space_hash = String(fd.get('space_id') || '');
+    const space_id = (autChatsSpaceSel.selectedOptions[0] as any)?.dataset?.id || '';
+    if (!space_hash || !space_id) { autChatsRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace válido')); return; }
+    autChatsReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/chats?space_id=${space_id}`, method: 'GET', auth: true }));
+    try { const data = await (api as any).aut_listChats({ space_hash, space_id }); autChatsRespOut.replaceChildren(alert('success', 'Chats listados'), jsonPre(data)); }
+    catch (err) { autChatsRespOut.replaceChildren(alert('danger', 'Falha ao listar chats'), jsonPre(err)); }
+  });
+  autChatsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(autChatsForm as HTMLFormElement);
+    const space_hash = String(fd.get('space_id') || '');
+    const space_id = (autChatsSpaceSel.selectedOptions[0] as any)?.dataset?.id || '';
+    const prompt_id = Number(fd.get('prompt_id') || 0);
+    const message = String(fd.get('message') || '').trim();
+    if (!space_hash || !space_id || !prompt_id || !message) { autChatsRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace e informe Prompt ID e Mensagem')); return; }
+    autChatsReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/chats?space_id=${space_id}`, method: 'POST', auth: true, body: { prompt_id, message } }));
+    try { const data = await (api as any).aut_createChat({ space_hash, space_id, prompt_id, message }); autChatsRespOut.replaceChildren(alert('success', 'Chat criado'), jsonPre(data)); }
+    catch (err) { autChatsRespOut.replaceChildren(alert('danger', 'Falha ao criar chat'), jsonPre(err)); }
+  });
   const autForm = el('form', 'row g-2 align-items-end');
   autForm.innerHTML = `
-    <div class="col-md-3"><label class="form-label">Space ID</label><input name="space_id" class="form-control" required></div>
-    <div class="col-md-3"><label class="form-label">Nome da Key</label><input name="key_name" class="form-control"></div>
-    <div class="col-md-3"><label class="form-label">Valor</label><input name="key_value" class="form-control"></div>
-    <div class="col-md-3 d-flex gap-2"><button class="btn btn-outline-secondary" type="button" id="btn-aut-list">Listar Keys</button><button class="btn btn-primary" type="submit">Criar Key</button></div>
+    <div class="col-md-3"><label class="form-label">UsersSpace</label><select name="space_id" class="form-select" required></select></div>
+    <div class="col-md-3"><label class="form-label">Provider</label>
+      <select name="provider" class="form-select" required>
+        <option value="">Selecione…</option>
+        <option value="openai">openai</option>
+        <option value="gemini">gemini</option>
+        <option value="grok">grok</option>
+      </select>
+    </div>
+    <div class="col-md-3"><label class="form-label">Nome da Key</label><input name="key_name" class="form-control" required></div>
+    <div class="col-md-3"><label class="form-label">API Key</label><input name="api_key" class="form-control" required></div>
+    <div class="col-12 d-flex gap-2"><button class="btn btn-outline-secondary" type="button" id="btn-aut-list">Listar Keys</button><button class="btn btn-primary" type="submit">Criar Key</button></div>
   `;
   const autReqOut = el('div');
   const autRespOut = el('div');
+  const autSpaceSel = autForm.querySelector('select[name="space_id"]') as HTMLSelectElement;
+  fillSpacesSelect(autSpaceSel);
   autForm.querySelector('#btn-aut-list')!.addEventListener('click', async () => {
     const fd = new FormData(autForm as HTMLFormElement);
-    const space_id = String(fd.get('space_id') || '');
-    if (!space_id) { autRespOut.replaceChildren(alert('danger', 'Informe o Space ID')); return; }
-    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_id}/automata/keys`, method: 'GET', auth: true }));
-    try { const data = await api.aut_listKeys(space_id); autRespOut.replaceChildren(alert('success', 'Keys listadas'), jsonPre(data)); }
+    const space_hash = String(fd.get('space_id') || '');
+    const space_id = (autSpaceSel.selectedOptions[0] as any)?.dataset?.id || '';
+    if (!space_hash || !space_id) { autRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace')); return; }
+    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/keys?space_id=${space_id}`, method: 'GET', auth: true }));
+    try { const data = await api.aut_listKeys({ space_hash, space_id }); autRespOut.replaceChildren(alert('success', 'Keys listadas'), jsonPre(data)); }
     catch (err) { autRespOut.replaceChildren(alert('danger', 'Falha ao listar keys'), jsonPre(err)); }
   });
   autForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(autForm as HTMLFormElement);
-    const space_id = String(fd.get('space_id') || '');
-    const name = String(fd.get('key_name') || '');
-    const value = String(fd.get('key_value') || '');
-    if (!space_id || !name || !value) { autRespOut.replaceChildren(alert('danger', 'Informe Space ID, Nome e Valor da Key')); return; }
-    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_id}/automata/keys`, method: 'POST', auth: true, body: { name, value } }));
-    try { const data = await api.aut_createKey(space_id, { name, value }); autRespOut.replaceChildren(alert('success', 'Key criada'), jsonPre(data)); }
+    const space_hash = String((fd.get('space_id') || '').toString().trim());
+    const space_id = (autSpaceSel.selectedOptions[0] as any)?.dataset?.id || '';
+    const provider = String((fd.get('provider') || '').toString().trim());
+    const name = String((fd.get('key_name') || '').toString().trim());
+    const api_key = String((fd.get('api_key') || '').toString().trim());
+    if (!space_hash || !space_id || !provider || !name || !api_key) { autRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace e informe Provider, Nome e API Key')); return; }
+    if (api_key === '***' || api_key.length < 8) { autRespOut.replaceChildren(alert('danger', 'Informe uma API Key válida (não use ***).')); return; }
+    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/keys?space_id=${space_id}`, method: 'POST', auth: true, body: { provider, name, api_key: '***' } }));
+    try { const data = await api.aut_createKey({ space_hash, space_id, provider, name, api_key }); autRespOut.replaceChildren(alert('success', 'Key criada'), jsonPre(data)); }
     catch (err) { autRespOut.replaceChildren(alert('danger', 'Falha ao criar key'), jsonPre(err)); }
   });
-  autPane.append(section('Automata – Keys', autForm), section('Request', autReqOut), section('Response', autRespOut));
+  const autDesc = el('div', 'text-body-secondary', 'Automata é o estúdio de agentes por UsersSpace: gerencia chaves de API, prompts reutilizáveis e chats. Requer estar logado e com UsersSpace selecionado.');
+  // Ordem: Keys primeiro, depois Chats
+  autPane.append(
+    section('Automata – Keys', (() => { const wrap = el('div'); wrap.append(autDesc, autForm); return wrap; })()),
+    section('Request', autReqOut),
+    section('Response', autRespOut),
+    section('Automata – Chats', autChatsForm),
+    section('Request', autChatsReqOut),
+    section('Response', autChatsRespOut)
+  );
 
   // Diagnostics Pane (hidden within Login section footer)
   const diag = el('div', 'mt-3 d-flex gap-2');
@@ -361,6 +456,9 @@ function buildUI() {
   loginPane.append(diag);
 
   panes.append(loginPane, signupPane, verifyPane, recPane, spPane, facPane, autPane);
+  // Recarrega lista de espaços quando abas são abertas
+  document.getElementById('tab-faciendum')?.addEventListener('click', () => fillSpacesSelect(facSpaceSel));
+  document.getElementById('tab-automata')?.addEventListener('click', () => { fillSpacesSelect(autSpaceSel); fillSpacesSelect(autChatsSpaceSel); });
   app.append(panes);
   updateLoginStatus();
 }
