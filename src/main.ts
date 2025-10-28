@@ -50,6 +50,12 @@ const api = {
     const redirect_uri = p.redirect_uri || window.location.origin;
     return request('/user', { method: 'POST', body: { ...p, redirect_uri } });
   },
+  // Faciendum (skeleton)
+  fac_listBoards: (spaceId: string) => request(`/user/spaces/${encodeURIComponent(spaceId)}/faciendum/boards`, { auth: true }),
+  fac_createBoard: (spaceId: string, p: { name: string }) => request(`/user/spaces/${encodeURIComponent(spaceId)}/faciendum/boards`, { method: 'POST', auth: true, body: p }),
+  // Automata (skeleton)
+  aut_listKeys: (spaceId: string) => request(`/user/spaces/${encodeURIComponent(spaceId)}/automata/keys`, { auth: true }),
+  aut_createKey: (spaceId: string, p: { name: string; value: string }) => request(`/user/spaces/${encodeURIComponent(spaceId)}/automata/keys`, { method: 'POST', auth: true, body: p }),
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, html?: string) {
@@ -91,6 +97,8 @@ function buildUI() {
     { id: 'verify', label: 'Verificar' },
     { id: 'recovery', label: 'Recuperar Senha' },
     { id: 'spaces', label: 'UsersSpaces' },
+    { id: 'faciendum', label: 'Faciendum' },
+    { id: 'automata', label: 'Automata' },
   ];
 
   function makeTab(id: string, label: string, active?: boolean) {
@@ -273,6 +281,70 @@ function buildUI() {
   spActions.append(btnList, formCreate);
   spPane.append(section('UsersSpaces', spActions), section('Request', spReqOut), section('Response', spRespOut));
 
+  // Faciendum Pane (skeleton)
+  const facPane = el('div', 'tab-pane fade');
+  facPane.id = 'pane-faciendum';
+  const facForm = el('form', 'row g-2 align-items-end');
+  facForm.innerHTML = `
+    <div class="col-md-3"><label class="form-label">Space ID</label><input name="space_id" class="form-control" required></div>
+    <div class="col-md-4"><label class="form-label">Nome do Board</label><input name="board_name" class="form-control"></div>
+    <div class="col-md-5 d-flex gap-2"><button class="btn btn-outline-secondary" type="button" id="btn-fac-list">Listar Boards</button><button class="btn btn-primary" type="submit">Criar Board</button></div>
+  `;
+  const facReqOut = el('div');
+  const facRespOut = el('div');
+  facForm.querySelector('#btn-fac-list')!.addEventListener('click', async () => {
+    const fd = new FormData(facForm as HTMLFormElement);
+    const space_id = String(fd.get('space_id') || '');
+    if (!space_id) { facRespOut.replaceChildren(alert('danger', 'Informe o Space ID')); return; }
+    facReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_id}/faciendum/boards`, method: 'GET', auth: true }));
+    try { const data = await api.fac_listBoards(space_id); facRespOut.replaceChildren(alert('success', 'Boards listados'), jsonPre(data)); }
+    catch (err) { facRespOut.replaceChildren(alert('danger', 'Falha ao listar boards'), jsonPre(err)); }
+  });
+  facForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(facForm as HTMLFormElement);
+    const space_id = String(fd.get('space_id') || '');
+    const name = String(fd.get('board_name') || '');
+    if (!space_id || !name) { facRespOut.replaceChildren(alert('danger', 'Informe Space ID e Nome do Board')); return; }
+    facReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_id}/faciendum/boards`, method: 'POST', auth: true, body: { name } }));
+    try { const data = await api.fac_createBoard(space_id, { name }); facRespOut.replaceChildren(alert('success', 'Board criado'), jsonPre(data)); }
+    catch (err) { facRespOut.replaceChildren(alert('danger', 'Falha ao criar board'), jsonPre(err)); }
+  });
+  facPane.append(section('Faciendum – Boards', facForm), section('Request', facReqOut), section('Response', facRespOut));
+
+  // Automata Pane (skeleton)
+  const autPane = el('div', 'tab-pane fade');
+  autPane.id = 'pane-automata';
+  const autForm = el('form', 'row g-2 align-items-end');
+  autForm.innerHTML = `
+    <div class="col-md-3"><label class="form-label">Space ID</label><input name="space_id" class="form-control" required></div>
+    <div class="col-md-3"><label class="form-label">Nome da Key</label><input name="key_name" class="form-control"></div>
+    <div class="col-md-3"><label class="form-label">Valor</label><input name="key_value" class="form-control"></div>
+    <div class="col-md-3 d-flex gap-2"><button class="btn btn-outline-secondary" type="button" id="btn-aut-list">Listar Keys</button><button class="btn btn-primary" type="submit">Criar Key</button></div>
+  `;
+  const autReqOut = el('div');
+  const autRespOut = el('div');
+  autForm.querySelector('#btn-aut-list')!.addEventListener('click', async () => {
+    const fd = new FormData(autForm as HTMLFormElement);
+    const space_id = String(fd.get('space_id') || '');
+    if (!space_id) { autRespOut.replaceChildren(alert('danger', 'Informe o Space ID')); return; }
+    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_id}/automata/keys`, method: 'GET', auth: true }));
+    try { const data = await api.aut_listKeys(space_id); autRespOut.replaceChildren(alert('success', 'Keys listadas'), jsonPre(data)); }
+    catch (err) { autRespOut.replaceChildren(alert('danger', 'Falha ao listar keys'), jsonPre(err)); }
+  });
+  autForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(autForm as HTMLFormElement);
+    const space_id = String(fd.get('space_id') || '');
+    const name = String(fd.get('key_name') || '');
+    const value = String(fd.get('key_value') || '');
+    if (!space_id || !name || !value) { autRespOut.replaceChildren(alert('danger', 'Informe Space ID, Nome e Valor da Key')); return; }
+    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_id}/automata/keys`, method: 'POST', auth: true, body: { name, value } }));
+    try { const data = await api.aut_createKey(space_id, { name, value }); autRespOut.replaceChildren(alert('success', 'Key criada'), jsonPre(data)); }
+    catch (err) { autRespOut.replaceChildren(alert('danger', 'Falha ao criar key'), jsonPre(err)); }
+  });
+  autPane.append(section('Automata – Keys', autForm), section('Request', autReqOut), section('Response', autRespOut));
+
   // Diagnostics Pane (hidden within Login section footer)
   const diag = el('div', 'mt-3 d-flex gap-2');
   const btnPing = el('button', 'btn btn-outline-secondary btn-sm', 'Ping /healthz') as HTMLButtonElement;
@@ -288,7 +360,7 @@ function buildUI() {
   diag.append(btnPing, btnWhoami);
   loginPane.append(diag);
 
-  panes.append(loginPane, signupPane, verifyPane, recPane, spPane);
+  panes.append(loginPane, signupPane, verifyPane, recPane, spPane, facPane, autPane);
   app.append(panes);
   updateLoginStatus();
 }

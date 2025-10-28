@@ -32,7 +32,7 @@ Navegação: [Admins](ADMINS.md) · [Tools](TOOLS.md) · [Como usar (Users)](HOW
 
 - POST `/user/auth/token` – login com `{username,password}` → `access_token` e `refresh_token`.
 - POST `/user/auth/token/refresh` – novo par de tokens a partir de `refresh_token` válido.
-- POST `/user/auth/verify` – confirma conta via `{code,password}`.
+- POST `/user/auth/verify` – ativa a conta utilizando o código de verificação e a senha atual do usuário (`{code,password}`).
 - GET `/user/auth/verify-link?login=&code=` – confirma via link público (por `username` ou `email`).
 - POST `/user/auth/password-recovery` – redefine senha e envia código por e‑mail.
 - POST `/user/auth/verification-code` – reenvia código de verificação (por `login`).
@@ -40,7 +40,7 @@ Navegação: [Admins](ADMINS.md) · [Tools](TOOLS.md) · [Como usar (Users)](HOW
   - Rate limit:
     - Por IP: `VERIFY_RESEND_IP_LIMIT` por `VERIFY_RESEND_IP_WINDOW_MINUTES` (padrão: herda RECOVERY_IP_*)
     - Por login/e-mail: `VERIFY_RESEND_LOGIN_LIMIT` por `VERIFY_RESEND_LOGIN_WINDOW_MINUTES` (padrão: herda RECOVERY_EMAIL_*)
-- POST `/user` – cria usuário: `{ email, username, password, confirm_password }`. Senhas devem coincidir; aplica política de senha. Cria conta `is_verified=false` e envia código de verificação por e‑mail.
+- POST `/user` – cria usuário: `{ email, username, password, confirm_password, redirect_uri? }`. Senhas devem coincidir; aplica política de senha. Cria conta `is_verified=false` e envia código de verificação por e‑mail. Se `redirect_uri` for informado, ele define a base do link de verificação enviado por e‑mail.
 
 Observação (Vercel): ao consumir pela Vercel, use o prefixo `/api` (ex.: `/api/user/auth/token`). Após o próximo deploy, rotas sem `/api` também funcionarão por rewrite.
 
@@ -49,7 +49,7 @@ Observação (Vercel): ao consumir pela Vercel, use o prefixo `/api` (ex.: `/api
 - Tabela `users_spaces`:
   - `owner_user_id`, `name`, `hash` (único, 32 chars), `created_at`, `updated_at`.
 - Rotas atuais:
-  - POST `/user/spaces` – criar (requer JWT de usuário e `tools_role=admin`).
+- POST `/user/spaces` – criar (requer JWT de usuário verificado; qualquer usuário pode criar).
   - GET `/user/spaces` – listar espaços do usuário autenticado (onde ele é owner).
 - Membership e permissões:
   - POST `/user/spaces/{space_id}/members` – adicionar membro (owner apenas) `{login, role}`.
@@ -79,10 +79,11 @@ Redirecionamento e links de verificação
 - Os e‑mails enviados para criação, reenvio de código e recuperação de senha incluem:
   - Um link “Verificar conta” apontando para `/user/auth/verify-link?login=&code=` (ou `/api/user/...` na Vercel quando a chamada foi para `/api`).
   - O código de verificação em texto no corpo do e‑mail.
-- A base do link é definida assim:
-  1) Se `ALLOWED_REDIRECT_URIS` estiver configurada e `Origin`/`Referer` da requisição pertencer a essa lista, usa essa origem (frontend).
-  2) Caso contrário, usa `PUBLIC_BASE_URL`.
-  3) Se também estiver vazia, usa a URL pública da própria API.
+- A base do link é definida nesta ordem:
+  1) `redirect_uri` enviado no payload (quando presente).
+  2) Primeira origem válida de `ALLOWED_REDIRECT_URIS` (quando definido no ambiente).
+  3) `PUBLIC_BASE_URL`.
+  4) URL pública da própria API (deduzida de `X-Forwarded-*` ou `Host`).
 
 Política de senha
 
