@@ -189,12 +189,17 @@ function buildUI() {
     <div class="col-md-4"><label class="form-label">Senha atual</label><input name="password" type="password" class="form-control" required></div>
     <div class="col-12"><button class="btn btn-primary" type="submit">Verificar</button></div>
   `;
-  const verifyOut = el('div');
+  const verifyReqOut = el('div');
+  const verifyRespOut = el('div');
   verifyForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(verifyForm as HTMLFormElement);
-    try { const resp = await api.verify({ code: String(fd.get('code')), password: String(fd.get('password')) }); verifyOut.replaceChildren(alert('success', 'Conta verificada'), jsonPre(resp)); }
-    catch (err) { verifyOut.replaceChildren(alert('danger', 'Falha na verificação'), jsonPre(err)); }
+    const code = String(fd.get('code'));
+    const password = String(fd.get('password'));
+    verifyReqOut.replaceChildren(jsonPre({ url: '/api/user/auth/verify', body: { code: '***', password: '***' } }));
+    verifyRespOut.replaceChildren(alert('success', 'Enviando...'));
+    try { const resp = await api.verify({ code, password }); verifyRespOut.replaceChildren(alert('success', 'Conta verificada'), jsonPre(resp)); }
+    catch (err) { verifyRespOut.replaceChildren(alert('danger', 'Falha na verificação'), jsonPre(err)); }
   });
   // Verificação via link agora é feita em página separada em public/user/auth/verify-link
 
@@ -206,10 +211,12 @@ function buildUI() {
   resendForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(resendForm as HTMLFormElement);
-    try { const resp = await api.resendCode({ login: String(fd.get('login')) }); verifyOut.replaceChildren(alert('success', 'Código reenviado'), jsonPre(resp)); }
-    catch (err) { verifyOut.replaceChildren(alert('danger', 'Falha ao reenviar'), jsonPre(err)); }
+    const login = String(fd.get('login'));
+    verifyReqOut.replaceChildren(jsonPre({ url: '/api/user/auth/verification-code', body: { login } }));
+    try { const resp = await api.resendCode({ login }); verifyRespOut.replaceChildren(alert('success', 'Código reenviado'), jsonPre(resp)); }
+    catch (err) { verifyRespOut.replaceChildren(alert('danger', 'Falha ao reenviar'), jsonPre(err)); }
   });
-  verifyPane.append(section('Verificar (código + senha)', verifyForm), section('Reenviar Código', resendForm), verifyOut);
+  verifyPane.append(section('Verificar (código + senha)', verifyForm), section('Reenviar Código', resendForm), section('Request', verifyReqOut), section('Response', verifyRespOut));
 
   // Recovery Pane
   const recPane = el('div', 'tab-pane fade');
@@ -219,14 +226,17 @@ function buildUI() {
     <div class="col-md-5"><label class="form-label">Email</label><input name="email" type="email" class="form-control" required></div>
     <div class="col-12"><button class="btn btn-primary" type="submit">Enviar</button></div>
   `;
-  const recOut = el('div');
+  const recReqOut = el('div');
+  const recRespOut = el('div');
   recForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(recForm as HTMLFormElement);
-    try { const resp = await api.recovery({ email: String(fd.get('email')) }); recOut.replaceChildren(alert('success', 'Se existir, e-mail enviado'), jsonPre(resp)); }
-    catch (err) { recOut.replaceChildren(alert('danger', 'Falha ao recuperar'), jsonPre(err)); }
+    const email = String(fd.get('email'));
+    recReqOut.replaceChildren(jsonPre({ url: '/api/user/auth/password-recovery', body: { email } }));
+    try { const resp = await api.recovery({ email }); recRespOut.replaceChildren(alert('success', 'Se existir, e-mail enviado'), jsonPre(resp)); }
+    catch (err) { recRespOut.replaceChildren(alert('danger', 'Falha ao recuperar'), jsonPre(err)); }
   });
-  recPane.append(section('Recuperar Senha', recForm), recOut);
+  recPane.append(section('Recuperar Senha', recForm), section('Request', recReqOut), section('Response', recRespOut));
 
   // Spaces Pane
   const spPane = el('div', 'tab-pane fade');
@@ -234,23 +244,27 @@ function buildUI() {
   const spActions = el('div', 'd-flex gap-2');
   const btnList = el('button', 'btn btn-outline-secondary', 'Listar Espaços') as HTMLButtonElement;
   btnList.addEventListener('click', async () => {
-    try { const data = await api.listSpaces(); spOut.replaceChildren(alert('success', 'Espaços listados'), jsonPre(data)); }
-    catch (err) { spOut.replaceChildren(alert('danger', 'Falha ao listar'), jsonPre(err)); }
+    spReqOut.replaceChildren(jsonPre({ url: '/api/user/spaces', method: 'GET', auth: true }));
+    try { const data = await api.listSpaces(); spRespOut.replaceChildren(alert('success', 'Espaços listados'), jsonPre(data)); }
+    catch (err) { spRespOut.replaceChildren(alert('danger', 'Falha ao listar'), jsonPre(err)); }
   });
   const formCreate = el('form', 'd-flex gap-2 align-items-end');
   formCreate.innerHTML = `
     <div><label class="form-label">Nome</label><input name="name" class="form-control" required></div>
     <div><button class="btn btn-primary" type="submit">Criar</button></div>
   `;
-  const spOut = el('div');
+  const spReqOut = el('div');
+  const spRespOut = el('div');
   formCreate.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(formCreate as HTMLFormElement);
-    try { const data = await api.createSpace({ name: String(fd.get('name')) }); spOut.replaceChildren(alert('success', 'Espaço criado'), jsonPre(data)); }
-    catch (err) { spOut.replaceChildren(alert('danger', 'Falha ao criar (requer tools_role=admin)'), jsonPre(err)); }
+    const name = String(fd.get('name'));
+    spReqOut.replaceChildren(jsonPre({ url: '/api/user/spaces', method: 'POST', auth: true, body: { name } }));
+    try { const data = await api.createSpace({ name }); spRespOut.replaceChildren(alert('success', 'Espaço criado'), jsonPre(data)); }
+    catch (err) { spRespOut.replaceChildren(alert('danger', 'Falha ao criar (requer tools_role=admin)'), jsonPre(err)); }
   });
   spActions.append(btnList, formCreate);
-  spPane.append(section('UsersSpaces', spActions), spOut);
+  spPane.append(section('UsersSpaces', spActions), section('Request', spReqOut), section('Response', spRespOut));
 
   // Diagnostics Pane (hidden within Login section footer)
   const diag = el('div', 'mt-3 d-flex gap-2');
