@@ -43,11 +43,11 @@ Front-end SPA em TypeScript (Vite) com UI em HTML + Bootstrap e função Serverl
 
 ### Integrações Tools: Faciendum e Automata
 - Faciendum: módulo de tarefas/Kanban por espaço do usuário.
-  - Base de rotas (backend): `/user/spaces/{space_id}/faciendum/...`
+  - Base de rotas (backend): `/user/spaces/{space_hash}/faciendum/...`
   - Exige JWT de usuário verificado (Authorization: Bearer ...).
   - Variável(s) de ambiente do backend (referência): `FACIENDUM_DATABASE_URL`.
 - Automata: estúdio de agentes (prompts, chaves e chats) por espaço do usuário.
-  - Base de rotas (backend): `/user/spaces/{space_id}/automata/...`
+  - Base de rotas (backend): `/user/spaces/{space_hash}/automata/...`
   - Exige JWT de usuário verificado.
   - Variável(s) de ambiente do backend (referência): `AUTOMATA_DATABASE_URL`.
 - Status no front: UI ainda não implementada; ficará sob a aba UsersSpaces (após seleção do espaço) ou em abas próprias. Ver “Pendente”.
@@ -96,8 +96,8 @@ Front-end SPA em TypeScript (Vite) com UI em HTML + Bootstrap e função Serverl
 - [ ] Gerenciar sessões (logout atual e “logout all”) do usuário.
 - [ ] Tratamento e exibição padronizados de erros (códigos i18n-friendly) e estados de carregamento em todos os fluxos.
 - [ ] Documentos HOWTOUSE por funcionalidade em `docs/` (ex.: HOWTOUSE_USERS_SPACES.md) seguindo o PROMPT de desenvolvimento contínuo.
-- [ ] Faciendum (por espaço): UI para Boards/Tracks/Tasks (CRUD e mover tasks) consumindo `/api/user/spaces/{space_id}/faciendum/...`.
-- [ ] Automata (por espaço): UI para Keys/Prompts/Chats consumindo `/api/user/spaces/{space_id}/automata/...`.
+- [ ] Faciendum (por espaço): UI para Boards/Tracks/Tasks (CRUD e mover tasks) consumindo `/api/user/spaces/{space_hash}/faciendum/...`.
+- [ ] Automata (por espaço): UI para Keys/Prompts/Chats consumindo `/api/user/spaces/{space_hash}/automata/...`.
 
 ### Sugestões
 - [ ] Auto-refresh de token em 401/expired com retry transparente e indicador de sessão expirada.

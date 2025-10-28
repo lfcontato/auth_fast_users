@@ -54,8 +54,8 @@ const api = {
   fac_listBoards: (spaceId: string) => request(`/user/spaces/${encodeURIComponent(spaceId)}/faciendum/boards`, { auth: true }),
   fac_createBoard: (spaceId: string, p: { name: string }) => request(`/user/spaces/${encodeURIComponent(spaceId)}/faciendum/boards`, { method: 'POST', auth: true, body: p }),
   // Automata (skeleton)
-  aut_listKeys: (p: { space_hash: string; space_id: string | number }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/keys?space_id=${encodeURIComponent(String(p.space_id))}`, { auth: true }),
-  aut_createKey: (p: { space_hash: string; space_id: string | number; provider: string; name: string; api_key: string }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/keys?space_id=${encodeURIComponent(String(p.space_id))}`, { method: 'POST', auth: true, body: { provider: p.provider, name: p.name, api_key: p.api_key } }),
+  aut_listKeys: (p: { space_hash: string }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/keys`, { auth: true }),
+  aut_createKey: (p: { space_hash: string; provider: string; name: string; api_key: string }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/keys`, { method: 'POST', auth: true, body: { provider: p.provider, name: p.name, api_key: p.api_key } }),
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, html?: string) {
@@ -364,27 +364,25 @@ function buildUI() {
   const autChatsSpaceSel = autChatsForm.querySelector('select[name="space_id"]') as HTMLSelectElement;
   fillSpacesSelect(autChatsSpaceSel);
   // API helpers for chats
-  (api as any).aut_listChats = (p: { space_hash: string; space_id: string | number }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/chats?space_id=${encodeURIComponent(String(p.space_id))}`, { auth: true });
-  (api as any).aut_createChat = (p: { space_hash: string; space_id: string | number; prompt_id: number; message: string }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/chats?space_id=${encodeURIComponent(String(p.space_id))}`, { method: 'POST', auth: true, body: { prompt_id: p.prompt_id, message: p.message } });
+  (api as any).aut_listChats = (p: { space_hash: string }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/chats`, { auth: true });
+  (api as any).aut_createChat = (p: { space_hash: string; prompt_id: number; message: string }) => request(`/user/spaces/${encodeURIComponent(p.space_hash)}/automata/chats`, { method: 'POST', auth: true, body: { prompt_id: p.prompt_id, message: p.message } });
   autChatsForm.querySelector('#btn-autch-list')!.addEventListener('click', async () => {
     const fd = new FormData(autChatsForm as HTMLFormElement);
     const space_hash = String(fd.get('space_id') || '');
-    const space_id = (autChatsSpaceSel.selectedOptions[0] as any)?.dataset?.id || '';
-    if (!space_hash || !space_id) { autChatsRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace válido')); return; }
-    autChatsReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/chats?space_id=${space_id}`, method: 'GET', auth: true }));
-    try { const data = await (api as any).aut_listChats({ space_hash, space_id }); autChatsRespOut.replaceChildren(alert('success', 'Chats listados'), jsonPre(data)); }
+    if (!space_hash) { autChatsRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace válido')); return; }
+    autChatsReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/chats`, method: 'GET', auth: true }));
+    try { const data = await (api as any).aut_listChats({ space_hash }); autChatsRespOut.replaceChildren(alert('success', 'Chats listados'), jsonPre(data)); }
     catch (err) { autChatsRespOut.replaceChildren(alert('danger', 'Falha ao listar chats'), jsonPre(err)); }
   });
   autChatsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(autChatsForm as HTMLFormElement);
     const space_hash = String(fd.get('space_id') || '');
-    const space_id = (autChatsSpaceSel.selectedOptions[0] as any)?.dataset?.id || '';
     const prompt_id = Number(fd.get('prompt_id') || 0);
     const message = String(fd.get('message') || '').trim();
-    if (!space_hash || !space_id || !prompt_id || !message) { autChatsRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace e informe Prompt ID e Mensagem')); return; }
-    autChatsReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/chats?space_id=${space_id}`, method: 'POST', auth: true, body: { prompt_id, message } }));
-    try { const data = await (api as any).aut_createChat({ space_hash, space_id, prompt_id, message }); autChatsRespOut.replaceChildren(alert('success', 'Chat criado'), jsonPre(data)); }
+    if (!space_hash || !prompt_id || !message) { autChatsRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace e informe Prompt ID e Mensagem')); return; }
+    autChatsReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/chats`, method: 'POST', auth: true, body: { prompt_id, message } }));
+    try { const data = await (api as any).aut_createChat({ space_hash, prompt_id, message }); autChatsRespOut.replaceChildren(alert('success', 'Chat criado'), jsonPre(data)); }
     catch (err) { autChatsRespOut.replaceChildren(alert('danger', 'Falha ao criar chat'), jsonPre(err)); }
   });
   const autForm = el('form', 'row g-2 align-items-end');
@@ -409,24 +407,22 @@ function buildUI() {
   autForm.querySelector('#btn-aut-list')!.addEventListener('click', async () => {
     const fd = new FormData(autForm as HTMLFormElement);
     const space_hash = String(fd.get('space_id') || '');
-    const space_id = (autSpaceSel.selectedOptions[0] as any)?.dataset?.id || '';
-    if (!space_hash || !space_id) { autRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace')); return; }
-    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/keys?space_id=${space_id}`, method: 'GET', auth: true }));
-    try { const data = await api.aut_listKeys({ space_hash, space_id }); autRespOut.replaceChildren(alert('success', 'Keys listadas'), jsonPre(data)); }
+    if (!space_hash) { autRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace')); return; }
+    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/keys`, method: 'GET', auth: true }));
+    try { const data = await api.aut_listKeys({ space_hash }); autRespOut.replaceChildren(alert('success', 'Keys listadas'), jsonPre(data)); }
     catch (err) { autRespOut.replaceChildren(alert('danger', 'Falha ao listar keys'), jsonPre(err)); }
   });
   autForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(autForm as HTMLFormElement);
     const space_hash = String((fd.get('space_id') || '').toString().trim());
-    const space_id = (autSpaceSel.selectedOptions[0] as any)?.dataset?.id || '';
     const provider = String((fd.get('provider') || '').toString().trim());
     const name = String((fd.get('key_name') || '').toString().trim());
     const api_key = String((fd.get('api_key') || '').toString().trim());
-    if (!space_hash || !space_id || !provider || !name || !api_key) { autRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace e informe Provider, Nome e API Key')); return; }
+    if (!space_hash || !provider || !name || !api_key) { autRespOut.replaceChildren(alert('danger', 'Selecione um UsersSpace e informe Provider, Nome e API Key')); return; }
     if (api_key === '***' || api_key.length < 8) { autRespOut.replaceChildren(alert('danger', 'Informe uma API Key válida (não use ***).')); return; }
-    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/keys?space_id=${space_id}`, method: 'POST', auth: true, body: { provider, name, api_key: '***' } }));
-    try { const data = await api.aut_createKey({ space_hash, space_id, provider, name, api_key }); autRespOut.replaceChildren(alert('success', 'Key criada'), jsonPre(data)); }
+    autReqOut.replaceChildren(jsonPre({ url: `/api/user/spaces/${space_hash}/automata/keys`, method: 'POST', auth: true, body: { provider, name, api_key: '***' } }));
+    try { const data = await api.aut_createKey({ space_hash, provider, name, api_key }); autRespOut.replaceChildren(alert('success', 'Key criada'), jsonPre(data)); }
     catch (err) { autRespOut.replaceChildren(alert('danger', 'Falha ao criar key'), jsonPre(err)); }
   });
   const autDesc = el('div', 'text-body-secondary', 'Automata é o estúdio de agentes por UsersSpace: gerencia chaves de API, prompts reutilizáveis e chats. Requer estar logado e com UsersSpace selecionado.');
